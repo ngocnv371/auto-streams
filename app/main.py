@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -12,6 +13,11 @@ from app.database import init_db
 from app.routers import dashboard, projects
 from app.routers import topics, ideas
 
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)-8s %(name)s - %(message)s",
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
