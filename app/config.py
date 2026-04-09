@@ -14,7 +14,10 @@ class DatabaseConfig:
 @dataclass
 class GeminiConfig:
     api_key: str = ""
-    model: str = "gemini-2.0-flash"
+    text_model: str = "gemini-2.0-flash"
+    image_model: str = "gemini-3.1-flash-image-preview"
+    tts_model: str = "gemini-2.5-flash-preview-tts"
+    tts_voice: str = "Kore"
 
 
 @dataclass

@@ -9,18 +9,12 @@ from .base import ImageProvider, TextProvider, TTSProvider
 
 _BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
-# Dedicated model names for modalities that need a specific checkpoint.
-_IMAGE_MODEL = "gemini-2.0-flash-preview-image-generation"
-_TTS_MODEL = "gemini-2.5-flash-preview-tts"
-_DEFAULT_TTS_VOICE = "Kore"
-
-
 class GeminiTextProvider(TextProvider):
     def __init__(self, config: GeminiConfig) -> None:
         self._config = config
 
     def generate(self, prompt: str, system_prompt: str | None = None) -> str:
-        url = f"{_BASE_URL}/models/{self._config.model}:generateContent"
+        url = f"{_BASE_URL}/models/{self._config.text_model}:generateContent"
         body: dict = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         }
@@ -42,7 +36,7 @@ class GeminiImageProvider(ImageProvider):
         self._config = config
 
     def generate(self, prompt: str, width: int, height: int) -> bytes:
-        url = f"{_BASE_URL}/models/{_IMAGE_MODEL}:generateContent"
+        url = f"{_BASE_URL}/models/{self._config.image_model}:generateContent"
         body = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]},
@@ -68,14 +62,14 @@ class GeminiTTSProvider(TTSProvider):
         self._config = config
 
     def synthesize(self, text: str, voice: str | None = None, speed: float = 1.0) -> bytes:
-        url = f"{_BASE_URL}/models/{_TTS_MODEL}:generateContent"
+        url = f"{_BASE_URL}/models/{self._config.tts_model}:generateContent"
         body = {
             "contents": [{"role": "user", "parts": [{"text": text}]}],
             "generationConfig": {
                 "responseModalities": ["AUDIO"],
                 "speechConfig": {
                     "voiceConfig": {
-                        "prebuiltVoiceConfig": {"voiceName": voice or _DEFAULT_TTS_VOICE}
+                        "prebuiltVoiceConfig": {"voiceName": voice or self._config.tts_voice}
                     }
                 },
             },

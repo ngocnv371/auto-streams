@@ -11,7 +11,10 @@ providers:
 
 gemini:
   api_key: YOUR_KEY
-  model: gemini-2.0-flash
+  text_model: gemini-3-flash-preview
+  image_model: gemini-3.1-flash-image-preview
+  tts_model: gemini-2.5-flash-preview-tts
+  tts_voice: Kore
 
 openai:
   base_url: http://localhost:11434/v1    # any OpenAI-compatible endpoint
@@ -25,7 +28,8 @@ comfy:
     music: ./assets/comfy-music.json
 
 kittentts:
-  model: en_US-amy-medium               # Piper voice model
+  model: KittenML/kitten-tts-mini-0.8               # Piper voice model
+  voice: Luna
 
 video:
   enableKenBurns: true
