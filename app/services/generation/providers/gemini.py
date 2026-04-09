@@ -36,10 +36,14 @@ class GeminiImageProvider(ImageProvider):
         self._config = config
 
     def generate(self, prompt: str, width: int, height: int) -> bytes:
+        aspectRatio = "9:16" if width < height else "16:9"
         url = f"{_BASE_URL}/models/{self._config.image_model}:generateContent"
         body = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]},
+            "generationConfig": {
+                "responseModalities": ["IMAGE"],
+                "imageConfig": {"aspectRatio": aspectRatio},
+            }
         }
 
         resp = requests.post(
