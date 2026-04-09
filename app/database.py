@@ -48,6 +48,11 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    """Return the shared session factory for use outside of request context (e.g. background tasks)."""
+    return _get_session_factory()
+
+
 async def init_db() -> None:
     """Create all tables if they don't exist."""
     from app import models  # noqa: F401 — registers models with Base

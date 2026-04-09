@@ -9,3 +9,4 @@ geckodriver.log
 .vscode/launch.json
 config.yml
 data/*.db
+temp/

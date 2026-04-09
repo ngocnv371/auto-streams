@@ -246,6 +246,21 @@
   .queue-name { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
   .queue-count { font-size: 1.75rem; font-weight: 700; line-height: 1; }
   .queue-label { font-size: .75rem; color: var(--muted); }
+  .queue-run {
+    margin-top: auto;
+    padding: .25rem .6rem;
+    border-radius: 5px;
+    font-size: .72rem;
+    cursor: pointer;
+    border: 1px solid var(--success);
+    background: transparent;
+    color: var(--success);
+    transition: background .12s, color .12s;
+    white-space: nowrap;
+    align-self: flex-start;
+  }
+  .queue-run:hover:not(:disabled) { background: var(--success); color: #fff; }
+  .queue-run:disabled { opacity: .4; cursor: not-allowed; }
 
   /* ── Summary chips ── */
   .summary-row { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
@@ -318,6 +333,9 @@
   .btn-sm.reject:hover  { background: var(--warning); color: #fff; }
   .btn-sm.delete  { border-color: var(--danger); color: var(--danger); }
   .btn-sm.delete:hover  { background: var(--danger); color: #fff; }
+  .btn-sm.run  { border-color: var(--success); color: var(--success); }
+  .btn-sm.run:hover  { background: var(--success); color: #fff; }
+  .btn-sm.run:disabled { opacity: .45; cursor: not-allowed; }
 
   /* ── Badges ── */
   .badge { display: inline-block; padding: .15rem .55rem; border-radius: 20px; font-size: .72rem; font-weight: 600; white-space: nowrap; }
@@ -761,8 +779,9 @@ async function loadDashboard() {
     $('queue-grid').innerHTML = Object.entries(labels).map(([k,label]) => `
       <div class="queue-card">
         <div class="queue-name">${label}</div>
-        <div class="queue-count">${qc[k]??0}</div>
+        <div class="queue-count" id="qc-${k}">${qc[k]??0}</div>
         <div class="queue-label">pending</div>
+        <button class="queue-run" id="qrun-${k}" ${(qc[k]??0)===0?'disabled':''} onclick="runQueue('${k}')">▶ Run</button>
       </div>`).join('');
   } catch (e) { toast('Dashboard error: ' + e.message, 'error'); }
 }
@@ -802,6 +821,7 @@ async function loadProjects() {
             <td class="td-actions" onclick="event.stopPropagation()">
               ${p.status==='idea'?`<button class="btn-sm approve" onclick="approveProject('${p.id}')">Approve</button>`:''}
               ${['idea','approved'].includes(p.status)?`<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`:''}
+              ${p.status==='approved'?`<button class="btn-sm run" onclick="runPipeline('${p.id}')">▶ Run</button>`:''}
               <button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>
             </td>
           </tr>`).join('')}
@@ -866,6 +886,36 @@ async function submitGenerate() {
 // ═══════════════════════════════════════════════════════════
 //  Project actions
 // ═══════════════════════════════════════════════════════════
+async function runQueue(queue) {
+  const btn = $(`qrun-${queue}`);
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const params = new URLSearchParams({ queue });
+    if (currentTopicId) params.set('topic_id', currentTopicId);
+    const res = await api('POST', `/dashboard/run-queue?${params}`);
+    toast(`${res.queued} project${res.queued !== 1 ? 's' : ''} queued for ${queue.replace(/_/g,' ')}`, 'success');
+    loadDashboard();
+  } catch (e) {
+    toast(e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '▶ Run'; }
+  }
+}
+
+async function runPipeline(id) {
+  const btn = document.querySelector(`[id="run-btn-${id}"]`);
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    await api('POST', `/projects/${id}/run`);
+    toast('Pipeline started', 'success');
+    loadDashboard();
+    if (activePage === 'projects') loadProjects();
+    if (_detailId === id) openDetail(id);
+  } catch (e) {
+    toast(e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '▶ Run Pipeline'; }
+  }
+}
+
 async function approveProject(id) {
   try {
     await api('POST', `/projects/${id}/approve`);
@@ -918,6 +968,7 @@ function renderDetail(p) {
   let actions = '';
   if (p.status === 'idea') actions += `<button class="btn-sm approve" onclick="approveProject('${p.id}')">Approve</button>`;
   if (['idea','approved'].includes(p.status)) actions += `<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`;
+  if (p.status === 'approved') actions += `<button class="btn-sm run" id="run-btn-${p.id}" onclick="runPipeline('${p.id}')">▶ Run Pipeline</button>`;
   actions += `<button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>`;
   $('dp-actions').innerHTML = actions;
 

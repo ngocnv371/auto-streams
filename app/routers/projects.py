@@ -4,13 +4,14 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
 from app.models import Project, Topic
 from app.schemas import ProjectCreate, ProjectOut, ProjectStatusUpdate, ProjectUpdate
+from app.services.pipeline import run_full_pipeline
 
 router = APIRouter()
 
@@ -91,6 +92,15 @@ async def set_status(project_id: str, body: ProjectStatusUpdate, session: Sessio
     return project.to_dict()
 
 
+@router.post("/{project_id}/run", response_model=ProjectOut)
+async def run_project_pipeline(project_id: str, session: Session, background_tasks: BackgroundTasks):
+    project = await _get_or_404(session, project_id)
+    if project.status != "approved":
+        raise HTTPException(400, "Only 'approved' projects can be run through the pipeline")
+    background_tasks.add_task(_process_pipeline, project_id)
+    return project.to_dict()
+
+
 @router.post("/{project_id}/approve", response_model=ProjectOut)
 async def approve_project(project_id: str, session: Session):
     project = await _get_or_404(session, project_id)
@@ -132,3 +142,8 @@ async def _get_or_404(session: AsyncSession, project_id: str) -> Project:
     if project is None:
         raise HTTPException(404, f"Project '{project_id}' not found")
     return project
+
+
+async def _process_pipeline(project_id: str) -> None:
+    """Background task — runs the full generation pipeline for an approved project."""
+    await run_full_pipeline(project_id)
