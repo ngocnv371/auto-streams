@@ -476,8 +476,10 @@ def _concat_clips(clip_paths: list[str], out_path: str) -> None:
     list_path = out_path + ".txt"
     with open(list_path, "w", encoding="utf-8") as f:
         for p in clip_paths:
-            # ffmpeg requires forward slashes even on Windows inside concat list
-            f.write(f"file '{p.replace(chr(92), '/')}'\n")
+            # Use absolute paths so ffmpeg doesn't resolve relative to the list file location.
+            # ffmpeg requires forward slashes even on Windows inside concat list.
+            abs_p = os.path.abspath(p).replace(chr(92), "/")
+            f.write(f"file '{abs_p}'\n")
     try:
         cmd = [
             "ffmpeg", "-y",
