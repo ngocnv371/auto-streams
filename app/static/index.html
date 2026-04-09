@@ -837,7 +837,7 @@ async function loadProjects() {
               ${p.status==='idea'?`<button class="btn-sm approve" onclick="approveProject('${p.id}')">Approve</button>`:''}
               ${['idea','approved'].includes(p.status)?`<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`:''}
               ${p.status==='approved'?`<button class="btn-sm run" onclick="runPipeline('${p.id}')">▶ Run</button>`:''}
-              ${['failed','images_ready','clips_ready'].includes(p.status)?`<button class="btn-sm rerender" onclick="reRender('${p.id}')">↺ Re-render</button>`:''}
+              ${['done', 'failed','images_ready','clips_ready'].includes(p.status)?`<button class="btn-sm rerender" onclick="reRender('${p.id}')">↺ Re-render</button>`:''}
               <button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>
             </td>
           </tr>`).join('')}

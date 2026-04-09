@@ -108,7 +108,7 @@ async def run_project_pipeline(project_id: str, session: Session, background_tas
 async def render_project(project_id: str, session: Session, background_tasks: BackgroundTasks):
     """Force a re-render stage. Accepts failed, images_ready, or clips_ready projects."""
     project = await _get_or_404(session, project_id)
-    if project.status not in ("failed", "images_ready", "clips_ready"):
+    if project.status not in ("done", "failed", "images_ready", "clips_ready"):
         raise HTTPException(400, "Project must be in 'failed', 'images_ready', or 'clips_ready' status to re-render")
     if project.status == "failed":
         project.status = "images_ready"
