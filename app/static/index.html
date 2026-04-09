@@ -447,13 +447,21 @@
   .meta-key { font-size: .7rem; color: var(--muted); margin-bottom: .15rem; }
   .meta-val { font-size: .85rem; word-break: break-all; }
   .meta-val.pre { font-family: monospace; font-size: .75rem; white-space: pre-wrap; }
-  .scenes-list { display: flex; flex-direction: column; gap: .75rem; }
-  .scene-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: .75rem 1rem; }
-  .scene-num { font-size: .7rem; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: .4rem; }
-  .scene-voiceover { font-size: .875rem; margin-bottom: .5rem; }
-  .scene-prompt { font-size: .78rem; color: var(--muted); font-style: italic; margin-bottom: .5rem; }
+  .scenes-list { display: flex; flex-direction: column; gap: .6rem; }
+  .scene-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: .6rem .75rem; display: flex; gap: .75rem; align-items: flex-start; }
+  .scene-thumb { flex-shrink: 0; width: 72px; border-radius: 5px; overflow: hidden; }
+  .scene-thumb img { width: 72px; height: auto; display: block; border-radius: 5px; }
+  .scene-body { flex: 1; min-width: 0; }
+  .scene-num { font-size: .7rem; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: .25rem; }
+  .scene-voiceover { font-size: .875rem; margin-bottom: .35rem; }
+  .scene-prompt { font-size: .75rem; color: var(--muted); font-style: italic; margin-bottom: .35rem; }
   .scene-assets { display: flex; gap: .5rem; flex-wrap: wrap; }
   .asset-chip { font-size: .72rem; padding: .15rem .5rem; border-radius: 4px; background: rgba(59,130,246,.1); color: var(--primary); border: 1px solid rgba(59,130,246,.2); }
+  .scene-audio { margin-top: .35rem; }
+  .scene-audio audio { width: 100%; height: 28px; border-radius: 6px; accent-color: var(--primary); }
+  .music-audio { margin-top: .5rem; }
+  .music-audio-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin-bottom: .3rem; }
+  .music-audio audio { width: 100%; height: 32px; border-radius: 6px; accent-color: var(--primary); }
   .empty { color: var(--muted); font-size: .875rem; text-align: center; padding: 2.5rem 0; }
 
   /* ── Toast ── */
@@ -1003,18 +1011,34 @@ function renderDetail(p) {
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;">${mediaLinks.map(([l,u])=>`<a class="asset-chip" href="${escHtml(u)}" target="_blank">${escHtml(l)}</a>`).join('')}</div>
     </div>`;
   }
+  const audioBase = `/api/projects/${p.id}/audio`;
+  const fnFromPath = path => path ? path.replace(/\\/g,'/').split('/').pop() : null;
   if (scenes.length) {
     body += `<div class="detail-section">
       <div class="detail-section-title">Scenes (${scenes.length})</div>
       <div class="scenes-list">${scenes.map((s,i)=>{
         const assets=[s.audio_url&&'Audio',s.image_url&&'Image',s.clip_url&&'Clip'].filter(Boolean);
+        const audioFile = fnFromPath(s.audio_path);
+        const imageFile = fnFromPath(s.image_path);
+        const imageBase = `/api/projects/${p.id}/image`;
         return `<div class="scene-card">
-          <div class="scene-num">Scene ${i+1}${s.duration!=null?` · ${s.duration}s`:''}</div>
-          <div class="scene-voiceover">${escHtml(s.voiceover||'')}</div>
-          ${s.image_prompt?`<div class="scene-prompt">${escHtml(s.image_prompt)}</div>`:''}
-          ${assets.length?`<div class="scene-assets">${assets.map(a=>`<span class="asset-chip">${a}</span>`).join('')}</div>`:''}
+          ${imageFile?`<div class="scene-thumb"><img loading="lazy" src="${imageBase}/${encodeURIComponent(imageFile)}" alt="Scene ${i+1}"></div>`:''}
+          <div class="scene-body">
+            <div class="scene-num">Scene ${i+1}${s.duration!=null?` · ${s.duration}s`:''}</div>
+            <div class="scene-voiceover">${escHtml(s.voiceover||'')}</div>
+            ${s.image_prompt?`<div class="scene-prompt">${escHtml(s.image_prompt)}</div>`:''}
+            ${audioFile?`<div class="scene-audio"><audio controls preload="none" src="${audioBase}/${encodeURIComponent(audioFile)}"></audio></div>`:''}
+            ${assets.length?`<div class="scene-assets">${assets.map(a=>`<span class="asset-chip">${a}</span>`).join('')}</div>`:''}
+          </div>
         </div>`;
       }).join('')}</div></div>`;
+  }
+  const musicFile = fnFromPath(meta.music_path);
+  if (musicFile) {
+    body += `<div class="detail-section">
+      <div class="detail-section-title">Background Music</div>
+      <div class="music-audio"><audio controls preload="none" src="${audioBase}/${encodeURIComponent(musicFile)}"></audio></div>
+    </div>`;
   }
   $('dp-body').innerHTML = body || '<div class="empty">No content yet.</div>';
 }

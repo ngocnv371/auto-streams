@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import os
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -130,6 +133,35 @@ async def delete_project(project_id: str, session: Session):
     project = await _get_or_404(session, project_id)
     await session.delete(project)
     await session.commit()
+
+
+@router.get("/{project_id}/audio/{filename}", include_in_schema=False)
+async def serve_audio(project_id: str, filename: str, session: Session):
+    """Stream a generated audio file (TTS scene or music) for in-browser preview."""
+    # Reject any path-traversal or non-WAV attempts
+    if not re.fullmatch(r"[\w\-]+\.wav", filename):
+        raise HTTPException(400, "Invalid filename")
+    project = await _get_or_404(session, project_id)
+    from app.config import get_config
+    cfg = get_config()
+    audio_path = os.path.join(cfg.temp_dir, project_id, filename)
+    if not os.path.isfile(audio_path):
+        raise HTTPException(404, "Audio file not found")
+    return FileResponse(audio_path, media_type="audio/wav")
+
+
+@router.get("/{project_id}/image/{filename}", include_in_schema=False)
+async def serve_image(project_id: str, filename: str, session: Session):
+    """Serve a generated scene image for in-browser preview."""
+    if not re.fullmatch(r"[\w\-]+\.png", filename):
+        raise HTTPException(400, "Invalid filename")
+    project = await _get_or_404(session, project_id)
+    from app.config import get_config
+    cfg = get_config()
+    image_path = os.path.join(cfg.temp_dir, project_id, filename)
+    if not os.path.isfile(image_path):
+        raise HTTPException(404, "Image file not found")
+    return FileResponse(image_path, media_type="image/png")
 
 
 # ------------------------------------------------------------------ helpers
