@@ -9,7 +9,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
-from app.models import Project
+from app.models import Project, Topic
 from app.schemas import ProjectCreate, ProjectOut, ProjectStatusUpdate, ProjectUpdate
 
 router = APIRouter()
@@ -20,12 +20,15 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 @router.get("", response_model=list[ProjectOut])
 async def list_projects(
     session: Session,
+    topic_id: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
     stmt = select(Project).order_by(Project.created_at.desc())
+    if topic_id:
+        stmt = stmt.where(Project.topic_id == topic_id)
     if status:
         stmt = stmt.where(Project.status == status)
     if search:
@@ -38,8 +41,12 @@ async def list_projects(
 
 @router.post("", response_model=ProjectOut, status_code=201)
 async def create_project(body: ProjectCreate, session: Session):
+    topic = await session.get(Topic, body.topic_id)
+    if not topic:
+        raise HTTPException(404, f"Topic '{body.topic_id}' not found")
     project = Project(
         id=str(uuid.uuid4()),
+        topic_id=body.topic_id,
         title=body.title,
         status="idea",
         tags_json=__import__("json").dumps(body.tags),

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -10,6 +10,7 @@
   :root {
     --bg:       #0f172a;
     --surface:  #1e293b;
+    --surface2: #263346;
     --border:   #334155;
     --text:     #f1f5f9;
     --muted:    #94a3b8;
@@ -42,23 +43,130 @@
   nav {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    padding: 0 1.5rem;
+    padding: 0 1.25rem;
     display: flex;
     align-items: center;
-    gap: 2rem;
+    gap: 1rem;
     height: 52px;
     position: sticky;
     top: 0;
     z-index: 100;
   }
-  .brand { font-weight: 700; font-size: 1.1rem; letter-spacing: -.5px; color: var(--text); }
+  .brand { font-weight: 700; font-size: 1.05rem; letter-spacing: -.5px; color: var(--text); white-space: nowrap; }
   .brand span { color: var(--primary); }
-  .nav-tabs { display: flex; gap: .25rem; }
-  .nav-tab {
-    padding: .35rem .9rem;
-    border-radius: 6px;
+
+  /* topic workspace selector */
+  .topic-ws { position: relative; flex-shrink: 0; }
+  .topic-ws-btn {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .3rem .7rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: .85rem;
+    transition: border-color .15s;
+    max-width: 240px;
+  }
+  .topic-ws-btn:hover { border-color: var(--primary); }
+  .topic-ws-btn.no-topic { color: var(--muted); font-style: italic; }
+  .topic-ws-btn .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .topic-ws-btn .chevron { flex-shrink: 0; font-size: .75rem; color: var(--muted); }
+
+  .topic-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 300px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    overflow: hidden;
+    z-index: 200;
+  }
+  .topic-dropdown.open { display: block; }
+  .topic-dropdown-header {
+    padding: .6rem .9rem;
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+  .topic-list { max-height: 240px; overflow-y: auto; }
+  .topic-item {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .55rem .9rem;
     cursor: pointer;
     font-size: .875rem;
+    transition: background .1s;
+  }
+  .topic-item:hover { background: rgba(255,255,255,.04); }
+  .topic-item.selected { background: rgba(59,130,246,.12); color: var(--primary); }
+  .topic-item .topic-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topic-item .topic-del {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: .85rem;
+    line-height: 1;
+    padding: .1rem .3rem;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity .1s, color .1s;
+  }
+  .topic-item:hover .topic-del { opacity: 1; }
+  .topic-item .topic-del:hover { color: var(--danger); }
+  .topic-empty { padding: .75rem .9rem; font-size: .8rem; color: var(--muted); }
+  .topic-add-row {
+    display: flex;
+    gap: .4rem;
+    padding: .6rem .9rem;
+    border-top: 1px solid var(--border);
+  }
+  .topic-add-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: .35rem .6rem;
+    font-size: .85rem;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .topic-add-input:focus { border-color: var(--primary); }
+  .topic-add-btn {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: .35rem .7rem;
+    cursor: pointer;
+    font-size: .85rem;
+    font-weight: 600;
+    transition: opacity .15s;
+    white-space: nowrap;
+  }
+  .topic-add-btn:hover { opacity: .85; }
+
+  /* nav tabs */
+  .nav-tabs { display: flex; gap: .2rem; }
+  .nav-tab {
+    padding: .3rem .8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: .85rem;
     color: var(--muted);
     transition: background .15s, color .15s;
     border: none;
@@ -67,82 +175,65 @@
   .nav-tab:hover { background: var(--border); color: var(--text); }
   .nav-tab.active { background: var(--primary); color: #fff; }
   .nav-spacer { flex: 1; }
-  .btn-new {
+  .btn-generate {
     padding: .35rem .9rem;
     background: var(--primary);
     color: #fff;
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    font-size: .875rem;
+    font-size: .85rem;
     font-weight: 500;
     transition: opacity .15s;
+    white-space: nowrap;
   }
-  .btn-new:hover { opacity: .85; }
+  .btn-generate:hover:not(:disabled) { opacity: .85; }
+  .btn-generate:disabled { opacity: .35; cursor: not-allowed; }
 
-  /* ── Main layout ── */
+  /* ── Main ── */
   main { flex: 1; padding: 1.5rem; max-width: 1400px; width: 100%; margin: 0 auto; }
 
-  /* ── Page visibility ── */
   .page { display: none; }
   .page.active { display: block; }
 
-  /* ── Cards / grid ── */
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-  .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; }
-  .grid-5 { display: grid; grid-template-columns: repeat(5,1fr); gap: .75rem; }
-
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.25rem;
+  /* ── Splash ── */
+  .splash {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    text-align: center;
+    gap: 1rem;
   }
-  .card-title {
-    font-size: .75rem;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: var(--muted);
-    margin-bottom: .75rem;
-    font-weight: 600;
-  }
+  .splash-icon { font-size: 3rem; }
+  .splash-title { font-size: 1.25rem; font-weight: 600; }
+  .splash-sub { color: var(--muted); font-size: .9rem; }
 
-  /* ── Status pipeline ── */
+  /* ── Pipeline ── */
   .pipeline {
     display: flex;
     align-items: stretch;
-    gap: 0;
     overflow-x: auto;
     padding-bottom: .25rem;
+    margin-bottom: 1.5rem;
   }
   .pipeline-step {
     flex: 1;
     min-width: 90px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 0;
     padding: .75rem .5rem;
     text-align: center;
-    position: relative;
   }
   .pipeline-step:first-child { border-radius: 8px 0 0 8px; }
-  .pipeline-step:last-child { border-radius: 0 8px 8px 0; }
+  .pipeline-step:last-child  { border-radius: 0 8px 8px 0; }
   .pipeline-step + .pipeline-step { border-left: none; }
-  .pipeline-step .step-count {
-    font-size: 1.5rem;
-    font-weight: 700;
-    line-height: 1;
-    margin-bottom: .25rem;
-  }
-  .pipeline-step .step-label {
-    font-size: .68rem;
-    color: var(--muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+  .pipeline-step .step-count { font-size: 1.5rem; font-weight: 700; line-height: 1; margin-bottom: .25rem; }
+  .pipeline-step .step-label { font-size: .68rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* ── Queue cards ── */
+  .grid-5 { display: grid; grid-template-columns: repeat(5,1fr); gap: .75rem; }
   .queue-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -152,26 +243,12 @@
     flex-direction: column;
     gap: .3rem;
   }
-  .queue-name {
-    font-size: .78rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    font-weight: 600;
-  }
-  .queue-count {
-    font-size: 1.75rem;
-    font-weight: 700;
-    line-height: 1;
-  }
+  .queue-name { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+  .queue-count { font-size: 1.75rem; font-weight: 700; line-height: 1; }
   .queue-label { font-size: .75rem; color: var(--muted); }
 
-  /* ── Summary row ── */
-  .summary-row {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
-  }
+  /* ── Summary chips ── */
+  .summary-row { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
   .summary-chip {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -186,17 +263,10 @@
   .summary-chip .num { font-size: 1.4rem; font-weight: 700; }
   .summary-chip .lbl { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
 
-  /* ── Section heading ── */
-  h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  h2 { font-size: .85rem; font-weight: 600; margin-bottom: .85rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 
   /* ── Projects table ── */
-  .toolbar {
-    display: flex;
-    gap: .75rem;
-    margin-bottom: 1rem;
-    align-items: center;
-    flex-wrap: wrap;
-  }
+  .toolbar { display: flex; gap: .75rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
   .search-input, .select-filter {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -222,15 +292,10 @@
     border-bottom: 1px solid var(--border);
     font-weight: 600;
   }
-  tbody tr {
-    border-bottom: 1px solid var(--border);
-    transition: background .1s;
-    cursor: pointer;
-  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; cursor: pointer; }
   tbody tr:hover { background: rgba(255,255,255,.03); }
   tbody td { padding: .65rem .75rem; vertical-align: middle; }
-  .td-id { font-family: monospace; font-size: .78rem; color: var(--muted); max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .td-title { font-weight: 500; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .td-title { font-weight: 500; max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .td-date { color: var(--muted); font-size: .8rem; white-space: nowrap; }
   .td-tags { display: flex; gap: .3rem; flex-wrap: wrap; }
   .tag { background: rgba(59,130,246,.15); color: var(--primary); border: 1px solid rgba(59,130,246,.3); padding: .1rem .45rem; border-radius: 4px; font-size: .72rem; }
@@ -249,20 +314,13 @@
   .btn-sm:hover { background: var(--border); color: var(--text); }
   .btn-sm.approve { border-color: var(--primary); color: var(--primary); }
   .btn-sm.approve:hover { background: var(--primary); color: #fff; }
-  .btn-sm.reject { border-color: var(--danger); color: var(--danger); }
-  .btn-sm.reject:hover { background: var(--danger); color: #fff; }
-  .btn-sm.delete { border-color: var(--danger); color: var(--danger); }
-  .btn-sm.delete:hover { background: var(--danger); color: #fff; }
+  .btn-sm.reject  { border-color: var(--warning); color: var(--warning); }
+  .btn-sm.reject:hover  { background: var(--warning); color: #fff; }
+  .btn-sm.delete  { border-color: var(--danger); color: var(--danger); }
+  .btn-sm.delete:hover  { background: var(--danger); color: #fff; }
 
-  /* ── Status badge ── */
-  .badge {
-    display: inline-block;
-    padding: .15rem .55rem;
-    border-radius: 20px;
-    font-size: .72rem;
-    font-weight: 600;
-    white-space: nowrap;
-  }
+  /* ── Badges ── */
+  .badge { display: inline-block; padding: .15rem .55rem; border-radius: 20px; font-size: .72rem; font-weight: 600; white-space: nowrap; }
   .badge-idea          { background: rgba(129,140,248,.15); color: var(--s-idea); }
   .badge-approved      { background: rgba(56,189,248,.15);  color: var(--s-approved); }
   .badge-content_ready { background: rgba(52,211,153,.15);  color: var(--s-content_ready); }
@@ -273,52 +331,40 @@
   .badge-done          { background: rgba(74,222,128,.15);  color: var(--s-done); }
   .badge-failed        { background: rgba(248,113,113,.15); color: var(--s-failed); }
 
-  /* ── Modal ── */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.6);
-    z-index: 200;
-    justify-content: center;
-    align-items: center;
-  }
+  /* ── Generate modal ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 300; justify-content: center; align-items: center; }
   .modal-overlay.open { display: flex; }
   .modal {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    width: min(520px, 95vw);
+    width: min(540px, 95vw);
     padding: 1.5rem;
     position: relative;
     max-height: 90vh;
     overflow-y: auto;
   }
-  .modal-title { font-size: 1rem; font-weight: 600; margin-bottom: 1.25rem; }
-  .modal-close {
-    position: absolute;
-    top: 1rem; right: 1rem;
-    background: none; border: none; color: var(--muted);
-    font-size: 1.25rem; cursor: pointer; line-height: 1;
-  }
+  .modal-title { font-size: 1rem; font-weight: 600; margin-bottom: .25rem; }
+  .modal-sub { font-size: .8rem; color: var(--muted); margin-bottom: 1.25rem; }
+  .modal-close { position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--muted); font-size: 1.25rem; cursor: pointer; line-height: 1; }
   .modal-close:hover { color: var(--text); }
   .form-field { display: flex; flex-direction: column; gap: .35rem; margin-bottom: 1rem; }
   .form-label { font-size: .8rem; color: var(--muted); font-weight: 500; }
-  .form-input, .form-textarea {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
+  .count-options { display: flex; gap: .5rem; }
+  .count-option {
+    flex: 1;
+    padding: .45rem .5rem;
     border-radius: 6px;
-    padding: .5rem .75rem;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--muted);
+    cursor: pointer;
     font-size: .875rem;
-    outline: none;
-    width: 100%;
-    font-family: inherit;
-    transition: border-color .15s;
+    text-align: center;
+    transition: background .12s, color .12s, border-color .12s;
   }
-  .form-input:focus, .form-textarea:focus { border-color: var(--primary); }
-  .form-textarea { resize: vertical; min-height: 80px; }
-  .modal-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: .5rem; }
+  .count-option.selected { background: rgba(59,130,246,.15); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+  .modal-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1rem; }
   .btn-primary {
     padding: .45rem 1.1rem;
     background: var(--primary);
@@ -329,8 +375,12 @@
     font-size: .875rem;
     font-weight: 500;
     transition: opacity .15s;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
   }
-  .btn-primary:hover { opacity: .85; }
+  .btn-primary:hover:not(:disabled) { opacity: .85; }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
   .btn-secondary {
     padding: .45rem 1.1rem;
     background: transparent;
@@ -342,15 +392,15 @@
     transition: background .15s, color .15s;
   }
   .btn-secondary:hover { background: var(--border); color: var(--text); }
+  .generated-list { margin-top: 1rem; display: flex; flex-direction: column; gap: .5rem; }
+  .gen-item { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: .6rem .9rem; }
+  .gen-title { font-size: .875rem; font-weight: 500; margin-bottom: .2rem; }
+  .gen-summary { font-size: .8rem; color: var(--muted); }
+  .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ── Detail panel ── */
-  .detail-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.5);
-    z-index: 200;
-  }
+  .detail-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; }
   .detail-overlay.open { display: block; }
   .detail-panel {
     position: fixed;
@@ -367,7 +417,7 @@
   .detail-panel.open { transform: translateX(0); }
   .detail-header { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.25rem; }
   .detail-header-info { flex: 1; min-width: 0; }
-  .detail-title { font-size: 1.15rem; font-weight: 600; margin-bottom: .4rem; }
+  .detail-title { font-size: 1.1rem; font-weight: 600; margin-bottom: .4rem; }
   .detail-meta { font-size: .78rem; color: var(--muted); }
   .detail-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.25rem; padding: 0; line-height: 1; flex-shrink: 0; }
   .detail-close:hover { color: var(--text); }
@@ -385,44 +435,22 @@
   .scene-voiceover { font-size: .875rem; margin-bottom: .5rem; }
   .scene-prompt { font-size: .78rem; color: var(--muted); font-style: italic; margin-bottom: .5rem; }
   .scene-assets { display: flex; gap: .5rem; flex-wrap: wrap; }
-  .asset-chip {
-    font-size: .72rem;
-    padding: .15rem .5rem;
-    border-radius: 4px;
-    background: rgba(59,130,246,.1);
-    color: var(--primary);
-    border: 1px solid rgba(59,130,246,.2);
-  }
+  .asset-chip { font-size: .72rem; padding: .15rem .5rem; border-radius: 4px; background: rgba(59,130,246,.1); color: var(--primary); border: 1px solid rgba(59,130,246,.2); }
   .empty { color: var(--muted); font-size: .875rem; text-align: center; padding: 2.5rem 0; }
 
   /* ── Toast ── */
   #toast {
-    position: fixed;
-    bottom: 1.5rem;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: .6rem 1.25rem;
-    font-size: .875rem;
-    z-index: 999;
-    opacity: 0;
-    transition: opacity .2s;
-    pointer-events: none;
-    white-space: nowrap;
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: .6rem 1.25rem; font-size: .875rem;
+    z-index: 999; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap;
   }
   #toast.show { opacity: 1; }
-  #toast.error { border-color: var(--danger); color: var(--danger); }
+  #toast.error   { border-color: var(--danger);  color: var(--danger); }
   #toast.success { border-color: var(--success); color: var(--success); }
 
-  /* ── Misc ── */
-  .spacer { height: 1.5rem; }
   .text-muted { color: var(--muted); }
-  @media (max-width: 700px) {
-    .grid-2, .grid-3, .grid-5 { grid-template-columns: 1fr 1fr; }
-    .summary-row { flex-wrap: wrap; }
-  }
+  @media (max-width: 700px) { .grid-5 { grid-template-columns: 1fr 1fr; } }
 </style>
 </head>
 <body>
@@ -430,75 +458,94 @@
 <!-- ══════════════════════ NAV ══════════════════════ -->
 <nav>
   <div class="brand">auto<span>-streams</span></div>
+
+  <div class="topic-ws" id="topic-ws">
+    <button class="topic-ws-btn no-topic" id="topic-ws-btn" onclick="toggleTopicDropdown(event)">
+      <span class="label" id="topic-ws-label">Select a topic…</span>
+      <span class="chevron">▾</span>
+    </button>
+    <div class="topic-dropdown" id="topic-dropdown">
+      <div class="topic-dropdown-header">Workspace</div>
+      <div class="topic-list" id="topic-list-dd"></div>
+      <div class="topic-add-row">
+        <input class="topic-add-input" id="topic-add-input" placeholder="New one-sentence topic…" onkeydown="if(event.key==='Enter') addTopic()" />
+        <button class="topic-add-btn" onclick="addTopic()">Add</button>
+      </div>
+    </div>
+  </div>
+
   <div class="nav-tabs">
-    <button class="nav-tab active" onclick="showPage('dashboard')">Dashboard</button>
-    <button class="nav-tab" onclick="showPage('projects')">Projects</button>
+    <button class="nav-tab active" id="tab-dashboard" onclick="showPage('dashboard', this)">Dashboard</button>
+    <button class="nav-tab" id="tab-projects" onclick="showPage('projects', this)">Projects</button>
   </div>
   <div class="nav-spacer"></div>
-  <button class="btn-new" onclick="openCreateModal()">+ New Idea</button>
+  <button class="btn-generate" id="btn-generate" disabled onclick="openGenerateModal()">Generate Ideas</button>
 </nav>
 
-<!-- ══════════════════════ DASHBOARD PAGE ══════════════════════ -->
+<!-- ══════════════════════ PAGES ══════════════════════ -->
 <main>
-<div id="page-dashboard" class="page active">
 
-  <div class="summary-row" id="summary-row">
-    <div class="summary-chip"><div class="num" id="s-total">—</div><div class="lbl">Total</div></div>
-    <div class="summary-chip"><div class="num" id="s-done" style="color:var(--success)">—</div><div class="lbl">Done</div></div>
-    <div class="summary-chip"><div class="num" id="s-failed" style="color:var(--danger)">—</div><div class="lbl">Failed</div></div>
-    <div class="summary-chip"><div class="num" id="s-idea" style="color:var(--s-idea)">—</div><div class="lbl">Ideas</div></div>
+  <div id="page-splash" class="page active">
+    <div class="splash">
+      <div class="splash-icon">🗂️</div>
+      <div class="splash-title">No topic selected</div>
+      <div class="splash-sub">Choose or create a topic workspace using the dropdown in the nav bar.</div>
+    </div>
   </div>
 
-  <h2>Pipeline</h2>
-  <div class="pipeline" id="pipeline-steps" style="margin-bottom:1.5rem;"></div>
-
-  <h2>Batch Queues</h2>
-  <div class="grid-5" id="queue-grid"></div>
-</div>
-
-<!-- ══════════════════════ PROJECTS PAGE ══════════════════════ -->
-<div id="page-projects" class="page">
-  <div class="toolbar">
-    <input class="search-input" type="search" id="search-input" placeholder="Search by title…" oninput="debounceLoadProjects()" />
-    <select class="select-filter" id="status-filter" onchange="loadProjects()">
-      <option value="">All statuses</option>
-      <option value="idea">idea</option>
-      <option value="approved">approved</option>
-      <option value="content_ready">content_ready</option>
-      <option value="scenes_ready">scenes_ready</option>
-      <option value="audio_ready">audio_ready</option>
-      <option value="images_ready">images_ready</option>
-      <option value="clips_ready">clips_ready</option>
-      <option value="done">done</option>
-      <option value="failed">failed</option>
-    </select>
+  <div id="page-dashboard" class="page">
+    <div class="summary-row">
+      <div class="summary-chip"><div class="num" id="s-total">—</div><div class="lbl">Total</div></div>
+      <div class="summary-chip"><div class="num" id="s-done" style="color:var(--success)">—</div><div class="lbl">Done</div></div>
+      <div class="summary-chip"><div class="num" id="s-failed" style="color:var(--danger)">—</div><div class="lbl">Failed</div></div>
+      <div class="summary-chip"><div class="num" id="s-idea" style="color:var(--s-idea)">—</div><div class="lbl">Ideas</div></div>
+    </div>
+    <h2>Pipeline</h2>
+    <div class="pipeline" id="pipeline-steps"></div>
+    <h2>Batch Queues</h2>
+    <div class="grid-5" id="queue-grid"></div>
   </div>
-  <div id="projects-table-wrap">
-    <div class="empty">Loading…</div>
+
+  <div id="page-projects" class="page">
+    <div class="toolbar">
+      <input class="search-input" type="search" id="search-input" placeholder="Search by title…" oninput="debounceLoadProjects()" />
+      <select class="select-filter" id="status-filter" onchange="loadProjects()">
+        <option value="">All statuses</option>
+        <option value="idea">idea</option>
+        <option value="approved">approved</option>
+        <option value="content_ready">content_ready</option>
+        <option value="scenes_ready">scenes_ready</option>
+        <option value="audio_ready">audio_ready</option>
+        <option value="images_ready">images_ready</option>
+        <option value="clips_ready">clips_ready</option>
+        <option value="done">done</option>
+        <option value="failed">failed</option>
+      </select>
+    </div>
+    <div id="projects-table-wrap"><div class="empty">Loading…</div></div>
   </div>
-</div>
+
 </main>
 
-<!-- ══════════════════════ CREATE MODAL ══════════════════════ -->
-<div class="modal-overlay" id="create-modal">
+<!-- ══════════════════════ GENERATE IDEAS MODAL ══════════════════════ -->
+<div class="modal-overlay" id="gen-modal">
   <div class="modal">
-    <button class="modal-close" onclick="closeCreateModal()">✕</button>
-    <div class="modal-title">New Idea</div>
-    <div class="form-field">
-      <label class="form-label">Title *</label>
-      <input class="form-input" id="create-title" placeholder="10 facts about black holes" />
+    <button class="modal-close" onclick="closeGenerateModal()">✕</button>
+    <div class="modal-title">Generate Ideas</div>
+    <div class="modal-sub" id="gen-modal-sub"></div>
+    <div class="form-field" id="gen-count-field">
+      <label class="form-label">How many ideas?</label>
+      <div class="count-options">
+        <div class="count-option" onclick="selectCount(3)">3</div>
+        <div class="count-option selected" onclick="selectCount(5)">5</div>
+        <div class="count-option" onclick="selectCount(8)">8</div>
+        <div class="count-option" onclick="selectCount(10)">10</div>
+      </div>
     </div>
-    <div class="form-field">
-      <label class="form-label">Tags (comma-separated)</label>
-      <input class="form-input" id="create-tags" placeholder="space, science" />
-    </div>
-    <div class="form-field">
-      <label class="form-label">Summary / Brief</label>
-      <textarea class="form-textarea" id="create-summary" placeholder="Optional story brief…"></textarea>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeCreateModal()">Cancel</button>
-      <button class="btn-primary" onclick="submitCreate()">Create</button>
+    <div id="gen-results"></div>
+    <div class="modal-actions" id="gen-actions">
+      <button class="btn-secondary" onclick="closeGenerateModal()">Cancel</button>
+      <button class="btn-primary" onclick="submitGenerate()"><span>Generate</span></button>
     </div>
   </div>
 </div>
@@ -517,13 +564,12 @@
   <div id="dp-body"></div>
 </div>
 
-<!-- ══════════════════════ TOAST ══════════════════════ -->
 <div id="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════════════
-//  Utilities
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+//  Utils
+// ═══════════════════════════════════════════════════════════
 const $ = id => document.getElementById(id);
 
 function toast(msg, type = 'success') {
@@ -547,84 +593,183 @@ async function api(method, path, body) {
 }
 
 function badge(status) {
-  return `<span class="badge badge-${status}">${status.replace('_', ' ')}</span>`;
+  return `<span class="badge badge-${status}">${status.replace(/_/g,' ')}</span>`;
 }
-
-function statusColor(status) {
-  const map = {
-    idea:'var(--s-idea)', approved:'var(--s-approved)',
-    content_ready:'var(--s-content_ready)', scenes_ready:'var(--s-scenes_ready)',
-    audio_ready:'var(--s-audio_ready)', images_ready:'var(--s-images_ready)',
-    clips_ready:'var(--s-clips_ready)', done:'var(--s-done)', failed:'var(--s-failed)'
-  };
-  return map[status] || 'var(--text)';
+function statusColor(s) {
+  return ({idea:'var(--s-idea)',approved:'var(--s-approved)',content_ready:'var(--s-content_ready)',
+    scenes_ready:'var(--s-scenes_ready)',audio_ready:'var(--s-audio_ready)',images_ready:'var(--s-images_ready)',
+    clips_ready:'var(--s-clips_ready)',done:'var(--s-done)',failed:'var(--s-failed)'})[s]||'var(--text)';
 }
-
 function fmtDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+function escHtml(s) {
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ═══════════════════════════════════════════════════
-//  Navigation
-// ═══════════════════════════════════════════════════
-function showPage(id) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  $(`page-${id}`).classList.add('active');
-  event.target.classList.add('active');
-  if (id === 'dashboard') loadDashboard();
-  if (id === 'projects') loadProjects();
-}
+// ═══════════════════════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════════════════════
+let currentTopicId   = localStorage.getItem('as_topic_id')   || null;
+let currentTopicText = localStorage.getItem('as_topic_text') || null;
+let allTopics  = [];
+let activePage = 'splash';
+let selectedCount = 5;
 
-// ═══════════════════════════════════════════════════
-//  Dashboard
-// ═══════════════════════════════════════════════════
-const PIPELINE_STATUSES = ['idea','approved','content_ready','scenes_ready','audio_ready','images_ready','clips_ready','done','failed'];
-
-async function loadDashboard() {
-  try {
-    const data = await api('GET', '/dashboard');
-    const sc = data.status_counts;
-
-    // Summary chips
-    $('s-total').textContent = data.total;
-    $('s-done').textContent  = sc.done  || 0;
-    $('s-failed').textContent= sc.failed|| 0;
-    $('s-idea').textContent  = sc.idea  || 0;
-
-    // Pipeline
-    const pipe = $('pipeline-steps');
-    pipe.innerHTML = PIPELINE_STATUSES.map(s => `
-      <div class="pipeline-step" style="border-top:3px solid ${statusColor(s)}">
-        <div class="step-count" style="color:${statusColor(s)}">${sc[s] ?? 0}</div>
-        <div class="step-label">${s.replace('_',' ')}</div>
-      </div>`).join('');
-
-    // Queues
-    const queueLabels = {
-      text_queue:   'Text / LLM',
-      tts_queue:    'TTS Audio',
-      music_queue:  'Music',
-      image_queue:  'Images',
-      render_queue: 'Render',
-    };
-    const qc = data.queue_counts;
-    $('queue-grid').innerHTML = Object.entries(queueLabels).map(([k, label]) => `
-      <div class="queue-card">
-        <div class="queue-name">${label}</div>
-        <div class="queue-count">${qc[k] ?? 0}</div>
-        <div class="queue-label">pending</div>
-      </div>`).join('');
-  } catch (e) {
-    toast('Failed to load dashboard: ' + e.message, 'error');
+// ═══════════════════════════════════════════════════════════
+//  Topic workspace
+// ═══════════════════════════════════════════════════════════
+function toggleTopicDropdown(e) {
+  e.stopPropagation();
+  $('topic-dropdown').classList.toggle('open');
+  if ($('topic-dropdown').classList.contains('open')) {
+    setTimeout(() => $('topic-add-input').focus(), 50);
   }
 }
 
-// ═══════════════════════════════════════════════════
-//  Projects list
-// ═══════════════════════════════════════════════════
+document.addEventListener('click', e => {
+  if (!$('topic-ws').contains(e.target)) $('topic-dropdown').classList.remove('open');
+});
+
+async function loadTopics() {
+  try { allTopics = await api('GET', '/topics'); } catch { allTopics = []; }
+  if (currentTopicId && !allTopics.find(t => t.id === currentTopicId)) {
+    currentTopicId = null; currentTopicText = null;
+    localStorage.removeItem('as_topic_id'); localStorage.removeItem('as_topic_text');
+  }
+  renderTopicDropdown();
+  applyTopic();
+}
+
+function renderTopicDropdown() {
+  const list = $('topic-list-dd');
+  if (!allTopics.length) {
+    list.innerHTML = '<div class="topic-empty">No topics yet — add one below.</div>';
+    return;
+  }
+  list.innerHTML = allTopics.map(t => `
+    <div class="topic-item ${t.id === currentTopicId ? 'selected' : ''}"
+         onclick="selectTopic('${escHtml(t.id)}', ${JSON.stringify(t.topic)})">
+      <span class="topic-text" title="${escHtml(t.topic)}">${escHtml(t.topic)}</span>
+      <button class="topic-del" title="Delete" onclick="deleteTopic(event,'${escHtml(t.id)}')">✕</button>
+    </div>`).join('');
+}
+
+function selectTopic(id, text) {
+  currentTopicId = id; currentTopicText = text;
+  localStorage.setItem('as_topic_id', id);
+  localStorage.setItem('as_topic_text', text);
+  $('topic-dropdown').classList.remove('open');
+  applyTopic();
+  refreshCurrentPage();
+}
+
+function applyTopic() {
+  const btn = $('topic-ws-btn');
+  if (currentTopicId) {
+    btn.classList.remove('no-topic');
+    $('topic-ws-label').textContent = currentTopicText || 'Topic selected';
+    $('btn-generate').disabled = false;
+  } else {
+    btn.classList.add('no-topic');
+    $('topic-ws-label').textContent = 'Select a topic…';
+    $('btn-generate').disabled = true;
+  }
+  renderTopicDropdown();
+  if (!currentTopicId) switchPage('splash');
+  else if (activePage === 'splash') { switchPage('dashboard'); loadDashboard(); }
+}
+
+async function addTopic() {
+  const input = $('topic-add-input');
+  const text = input.value.trim();
+  if (!text) return;
+  try {
+    const t = await api('POST', '/topics', { topic: text });
+    allTopics.push(t);
+    input.value = '';
+    selectTopic(t.id, t.topic);
+    toast('Topic created', 'success');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function deleteTopic(e, id) {
+  e.stopPropagation();
+  const t = allTopics.find(t => t.id === id);
+  if (!confirm(`Delete topic "${t?.topic}"?\nThis will fail if it has associated projects.`)) return;
+  try {
+    await api('DELETE', `/topics/${id}`);
+    allTopics = allTopics.filter(t => t.id !== id);
+    if (currentTopicId === id) {
+      currentTopicId = null; currentTopicText = null;
+      localStorage.removeItem('as_topic_id'); localStorage.removeItem('as_topic_text');
+    }
+    toast('Topic deleted', 'success');
+    renderTopicDropdown();
+    applyTopic();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Navigation
+// ═══════════════════════════════════════════════════════════
+function switchPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  $(`page-${id}`).classList.add('active');
+  activePage = id;
+}
+
+function showPage(id, tab) {
+  if (!currentTopicId) { toast('Select a topic first', 'error'); return; }
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  switchPage(id);
+  if (id === 'dashboard') loadDashboard();
+  if (id === 'projects')  loadProjects();
+}
+
+function refreshCurrentPage() {
+  if (activePage === 'dashboard') loadDashboard();
+  if (activePage === 'projects')  loadProjects();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Dashboard
+// ═══════════════════════════════════════════════════════════
+const PIPELINE_STATUSES = ['idea','approved','content_ready','scenes_ready','audio_ready','images_ready','clips_ready','done','failed'];
+
+async function loadDashboard() {
+  if (!currentTopicId) return;
+  try {
+    const data = await api('GET', `/dashboard?topic_id=${currentTopicId}`);
+    const sc = data.status_counts;
+    $('s-total').textContent  = data.total;
+    $('s-done').textContent   = sc.done   || 0;
+    $('s-failed').textContent = sc.failed || 0;
+    $('s-idea').textContent   = sc.idea   || 0;
+
+    $('pipeline-steps').innerHTML = PIPELINE_STATUSES.map(s => `
+      <div class="pipeline-step" style="border-top:3px solid ${statusColor(s)}">
+        <div class="step-count" style="color:${statusColor(s)}">${sc[s]??0}</div>
+        <div class="step-label">${s.replace(/_/g,' ')}</div>
+      </div>`).join('');
+
+    const labels = {text_queue:'Text / LLM',tts_queue:'TTS Audio',music_queue:'Music',image_queue:'Images',render_queue:'Render'};
+    const qc = data.queue_counts;
+    $('queue-grid').innerHTML = Object.entries(labels).map(([k,label]) => `
+      <div class="queue-card">
+        <div class="queue-name">${label}</div>
+        <div class="queue-count">${qc[k]??0}</div>
+        <div class="queue-label">pending</div>
+      </div>`).join('');
+  } catch (e) { toast('Dashboard error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Projects
+// ═══════════════════════════════════════════════════════════
 let _debounceT = null;
 function debounceLoadProjects() {
   clearTimeout(_debounceT);
@@ -632,44 +777,34 @@ function debounceLoadProjects() {
 }
 
 async function loadProjects() {
+  if (!currentTopicId) return;
   const search = $('search-input').value.trim();
   const status = $('status-filter').value;
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({ topic_id: currentTopicId, limit: '200' });
   if (search) params.set('search', search);
   if (status) params.set('status', status);
-  params.set('limit', '200');
-
   const wrap = $('projects-table-wrap');
   try {
     const projects = await api('GET', `/projects?${params}`);
     if (!projects.length) {
-      wrap.innerHTML = '<div class="empty">No projects found.</div>';
+      wrap.innerHTML = '<div class="empty">No projects yet — Generate Ideas to get started.</div>';
       return;
     }
     wrap.innerHTML = `
       <table>
-        <thead>
-          <tr>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Tags</th>
-            <th>Created</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${projects.map(p => `
-            <tr onclick="openDetail('${p.id}')">
-              <td class="td-title">${escHtml(p.title)}</td>
-              <td>${badge(p.status)}</td>
-              <td class="td-tags">${p.tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('') || '<span class="text-muted">—</span>'}</td>
-              <td class="td-date">${fmtDate(p.created_at)}</td>
-              <td class="td-actions" onclick="event.stopPropagation()">
-                ${p.status === 'idea' ? `<button class="btn-sm approve" onclick="approveProject('${p.id}')">Approve</button>` : ''}
-                ${p.status === 'idea' || p.status === 'approved' ? `<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>` : ''}
-                <button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>
-              </td>
-            </tr>`).join('')}
+        <thead><tr><th>Title</th><th>Status</th><th>Tags</th><th>Created</th><th>Actions</th></tr></thead>
+        <tbody>${projects.map(p => `
+          <tr onclick="openDetail('${p.id}')">
+            <td class="td-title">${escHtml(p.title)}</td>
+            <td>${badge(p.status)}</td>
+            <td class="td-tags">${p.tags.map(t=>`<span class="tag">${escHtml(t)}</span>`).join('')||'<span class="text-muted">—</span>'}</td>
+            <td class="td-date">${fmtDate(p.created_at)}</td>
+            <td class="td-actions" onclick="event.stopPropagation()">
+              ${p.status==='idea'?`<button class="btn-sm approve" onclick="approveProject('${p.id}')">Approve</button>`:''}
+              ${['idea','approved'].includes(p.status)?`<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`:''}
+              <button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>
+            </td>
+          </tr>`).join('')}
         </tbody>
       </table>`;
   } catch (e) {
@@ -677,74 +812,90 @@ async function loadProjects() {
   }
 }
 
-function escHtml(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// ═══════════════════════════════════════════════════════════
+//  Generate Ideas modal
+// ═══════════════════════════════════════════════════════════
+function selectCount(n) {
+  selectedCount = n;
+  document.querySelectorAll('.count-option').forEach(el => {
+    el.classList.toggle('selected', parseInt(el.textContent) === n);
+  });
 }
 
-// ═══════════════════════════════════════════════════
-//  Create modal
-// ═══════════════════════════════════════════════════
-function openCreateModal() {
-  $('create-title').value = '';
-  $('create-tags').value = '';
-  $('create-summary').value = '';
-  $('create-modal').classList.add('open');
-  setTimeout(() => $('create-title').focus(), 50);
+function openGenerateModal() {
+  if (!currentTopicId) return;
+  $('gen-modal-sub').textContent = `Topic: ${currentTopicText}`;
+  $('gen-results').innerHTML = '';
+  $('gen-count-field').style.display = '';
+  $('gen-actions').innerHTML = `
+    <button class="btn-secondary" onclick="closeGenerateModal()">Cancel</button>
+    <button class="btn-primary" onclick="submitGenerate()"><span>Generate</span></button>`;
+  $('gen-modal').classList.add('open');
 }
-function closeCreateModal() { $('create-modal').classList.remove('open'); }
+function closeGenerateModal() { $('gen-modal').classList.remove('open'); }
 
-async function submitCreate() {
-  const title = $('create-title').value.trim();
-  if (!title) { toast('Title is required', 'error'); return; }
-  const tags = $('create-tags').value.split(',').map(t => t.trim()).filter(Boolean);
-  const summary = $('create-summary').value.trim();
-  const metadata = summary ? { summary } : {};
+async function submitGenerate() {
+  $('gen-count-field').style.display = 'none';
+  $('gen-results').innerHTML = '';
+  $('gen-actions').innerHTML = `
+    <button class="btn-secondary" disabled>Cancel</button>
+    <button class="btn-primary" disabled><div class="spinner"></div><span>Generating…</span></button>`;
   try {
-    await api('POST', '/projects', { title, tags, metadata });
-    closeCreateModal();
-    toast('Project created', 'success');
-    loadProjects();
+    const ideas = await api('POST', '/ideas/generate', { topic_id: currentTopicId, count: selectedCount });
+    $('gen-results').innerHTML = `
+      <div style="font-size:.8rem;color:var(--success);margin-bottom:.5rem;">✓ ${ideas.length} idea${ideas.length!==1?'s':''} created</div>
+      <div class="generated-list">${ideas.map(p=>`
+        <div class="gen-item">
+          <div class="gen-title">${escHtml(p.title)}</div>
+          ${p.metadata?.summary?`<div class="gen-summary">${escHtml(p.metadata.summary)}</div>`:''}
+        </div>`).join('')}
+      </div>`;
+    $('gen-actions').innerHTML = `<button class="btn-primary" onclick="closeGenerateModal()">Done</button>`;
     loadDashboard();
+    if (activePage === 'projects') loadProjects();
+    toast(`${ideas.length} ideas generated`, 'success');
   } catch (e) {
-    toast('Error: ' + e.message, 'error');
+    $('gen-results').innerHTML = `<div style="color:var(--danger);font-size:.85rem;margin-bottom:.5rem;">Error: ${escHtml(e.message)}</div>`;
+    $('gen-count-field').style.display = '';
+    $('gen-actions').innerHTML = `
+      <button class="btn-secondary" onclick="closeGenerateModal()">Cancel</button>
+      <button class="btn-primary" onclick="submitGenerate()"><span>Retry</span></button>`;
   }
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 //  Project actions
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 async function approveProject(id) {
   try {
     await api('POST', `/projects/${id}/approve`);
-    toast('Project approved', 'success');
+    toast('Approved', 'success');
     loadProjects(); loadDashboard();
     if (_detailId === id) openDetail(id);
   } catch (e) { toast(e.message, 'error'); }
 }
-
 async function rejectProject(id) {
   if (!confirm('Reject this project?')) return;
   try {
     await api('POST', `/projects/${id}/reject`);
-    toast('Project rejected', 'success');
+    toast('Rejected', 'success');
     loadProjects(); loadDashboard();
     if (_detailId === id) openDetail(id);
   } catch (e) { toast(e.message, 'error'); }
 }
-
 async function deleteProject(id) {
   if (!confirm('Delete this project permanently?')) return;
   try {
     await api('DELETE', `/projects/${id}`);
-    toast('Project deleted', 'success');
+    toast('Deleted', 'success');
     loadProjects(); loadDashboard();
     if (_detailId === id) closeDetail();
   } catch (e) { toast(e.message, 'error'); }
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 //  Detail panel
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 let _detailId = null;
 
 async function openDetail(id) {
@@ -756,111 +907,89 @@ async function openDetail(id) {
     $('detail-panel').classList.add('open');
   } catch (e) { toast(e.message, 'error'); }
 }
-
 function closeDetail() {
   _detailId = null;
   $('detail-overlay').classList.remove('open');
   $('detail-panel').classList.remove('open');
 }
-
 function renderDetail(p) {
   $('dp-title').textContent = p.title;
-  $('dp-meta').innerHTML = `${badge(p.status)} &nbsp;·&nbsp; <span class="text-muted">${p.id}</span> &nbsp;·&nbsp; Created ${fmtDate(p.created_at)}`;
-
-  // Action buttons
+  $('dp-meta').innerHTML = `${badge(p.status)} &nbsp;·&nbsp; <span class="text-muted">${escHtml(p.id)}</span> &nbsp;·&nbsp; ${fmtDate(p.created_at)}`;
   let actions = '';
-  if (p.status === 'idea')
-    actions += `<button class="btn-sm approve" onclick="approveProject('${p.id}')">Approve</button>`;
-  if (p.status === 'idea' || p.status === 'approved')
-    actions += `<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`;
+  if (p.status === 'idea') actions += `<button class="btn-sm approve" onclick="approveProject('${p.id}')">Approve</button>`;
+  if (['idea','approved'].includes(p.status)) actions += `<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`;
   actions += `<button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>`;
   $('dp-actions').innerHTML = actions;
 
-  // Body
   const meta = p.metadata || {};
   const scenes = meta.scenes || [];
-
   const metaFields = [
-    ['Summary', meta.summary],
-    ['Transcript', meta.transcript],
-    ['Narrator', meta.narrator],
+    ['Summary',      meta.summary],
+    ['Transcript',   meta.transcript],
+    ['Narrator',     meta.narrator],
     ['Music prompt', meta.music],
     ['Visual guide', meta.visual_guide],
-    ['Duration', meta.duration != null ? `${meta.duration}s` : null],
-    ['Word count', meta.word_count],
-    ['Tags', p.tags.length ? p.tags.join(', ') : null],
-  ].filter(([, v]) => v != null);
+    ['Duration',     meta.duration != null ? `${meta.duration}s` : null],
+    ['Word count',   meta.word_count],
+    ['Tags',         p.tags.length ? p.tags.join(', ') : null],
+  ].filter(([,v]) => v != null);
 
   let body = '';
   if (metaFields.length) {
     body += `<div class="detail-section">
       <div class="detail-section-title">Metadata</div>
-      <div class="meta-grid">
-        ${metaFields.map(([k, v]) => `
-          <div class="meta-item">
-            <div class="meta-key">${escHtml(k)}</div>
-            <div class="meta-val pre">${escHtml(String(v))}</div>
-          </div>`).join('')}
-      </div>
-    </div>`;
+      <div class="meta-grid">${metaFields.map(([k,v])=>`
+        <div class="meta-item">
+          <div class="meta-key">${escHtml(k)}</div>
+          <div class="meta-val pre">${escHtml(String(v))}</div>
+        </div>`).join('')}
+      </div></div>`;
   }
-
-  // Media links
-  const mediaLinks = [
-    ['Music', meta.music_url],
-    ['Narration', meta.audio_url],
-    ['Video', meta.video_url],
-    ['Thumbnail', meta.thumbnail_url],
-  ].filter(([, v]) => v);
+  const mediaLinks = [['Music',meta.music_url],['Narration',meta.audio_url],['Video',meta.video_url],['Thumbnail',meta.thumbnail_url]].filter(([,v])=>v);
   if (mediaLinks.length) {
     body += `<div class="detail-section">
       <div class="detail-section-title">Media</div>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-        ${mediaLinks.map(([label, url]) => `<a class="asset-chip" href="${escHtml(url)}" target="_blank">${escHtml(label)}</a>`).join('')}
-      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">${mediaLinks.map(([l,u])=>`<a class="asset-chip" href="${escHtml(u)}" target="_blank">${escHtml(l)}</a>`).join('')}</div>
     </div>`;
   }
-
   if (scenes.length) {
     body += `<div class="detail-section">
       <div class="detail-section-title">Scenes (${scenes.length})</div>
-      <div class="scenes-list">
-        ${scenes.map((s, i) => {
-          const assets = [
-            s.audio_url && 'Audio',
-            s.image_url && 'Image',
-            s.clip_url  && 'Clip',
-          ].filter(Boolean);
-          return `<div class="scene-card">
-            <div class="scene-num">Scene ${i + 1}${s.duration != null ? ` · ${s.duration}s` : ''}</div>
-            <div class="scene-voiceover">${escHtml(s.voiceover || '')}</div>
-            ${s.image_prompt ? `<div class="scene-prompt">${escHtml(s.image_prompt)}</div>` : ''}
-            ${assets.length ? `<div class="scene-assets">${assets.map(a => `<span class="asset-chip">${a}</span>`).join('')}</div>` : ''}
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`;
+      <div class="scenes-list">${scenes.map((s,i)=>{
+        const assets=[s.audio_url&&'Audio',s.image_url&&'Image',s.clip_url&&'Clip'].filter(Boolean);
+        return `<div class="scene-card">
+          <div class="scene-num">Scene ${i+1}${s.duration!=null?` · ${s.duration}s`:''}</div>
+          <div class="scene-voiceover">${escHtml(s.voiceover||'')}</div>
+          ${s.image_prompt?`<div class="scene-prompt">${escHtml(s.image_prompt)}</div>`:''}
+          ${assets.length?`<div class="scene-assets">${assets.map(a=>`<span class="asset-chip">${a}</span>`).join('')}</div>`:''}
+        </div>`;
+      }).join('')}</div></div>`;
   }
-
-  if (!body) body = `<div class="empty">No content yet.</div>`;
-  $('dp-body').innerHTML = body;
+  $('dp-body').innerHTML = body || '<div class="empty">No content yet.</div>';
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 //  Keyboard
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    if ($('create-modal').classList.contains('open')) closeCreateModal();
+    if ($('gen-modal').classList.contains('open')) closeGenerateModal();
     else if ($('detail-panel').classList.contains('open')) closeDetail();
+    else $('topic-dropdown').classList.remove('open');
   }
-  if (e.key === 'Enter' && $('create-modal').classList.contains('open')) submitCreate();
 });
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 //  Init
-// ═══════════════════════════════════════════════════
-loadDashboard();
+// ═══════════════════════════════════════════════════════════
+loadTopics().then(() => {
+  if (currentTopicId) {
+    switchPage('dashboard');
+    $('tab-dashboard').classList.add('active');
+    loadDashboard();
+  }
+});
 </script>
 </body>
 </html>
+

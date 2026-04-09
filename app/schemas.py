@@ -8,7 +8,20 @@ from pydantic import BaseModel, field_validator
 from app.models import PROJECT_STATUSES
 
 
+class TopicCreate(BaseModel):
+    topic: str
+
+
+class TopicOut(BaseModel):
+    id: str
+    topic: str
+    created_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
 class ProjectCreate(BaseModel):
+    topic_id: str
     title: str
     tags: list[str] = []
     metadata: dict[str, Any] = {}
@@ -33,14 +46,20 @@ class ProjectStatusUpdate(BaseModel):
 
 class ProjectOut(BaseModel):
     id: str
+    topic_id: str
     title: str
     status: str
     tags: list[str]
     metadata: dict[str, Any]
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+
+class GenerateIdeasRequest(BaseModel):
+    topic_id: str
+    count: int = 5
 
 
 class DashboardOut(BaseModel):

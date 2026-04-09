@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from typing import Optional
 
 from app.database import get_session
 from app.models import Project, PROJECT_STATUSES
@@ -25,10 +27,14 @@ _QUEUE_STATUS_MAP: dict[str, list[str]] = {
 
 
 @router.get("", response_model=DashboardOut)
-async def get_dashboard(session: Session):
-    result = await session.execute(
-        select(Project.status, func.count().label("cnt")).group_by(Project.status)
-    )
+async def get_dashboard(
+    session: Session,
+    topic_id: Optional[str] = Query(None),
+):
+    stmt = select(Project.status, func.count().label("cnt")).group_by(Project.status)
+    if topic_id:
+        stmt = stmt.where(Project.topic_id == topic_id)
+    result = await session.execute(stmt)
     rows = result.all()
     raw: dict[str, int] = {row.status: row.cnt for row in rows}
 

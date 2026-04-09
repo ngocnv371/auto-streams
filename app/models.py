@@ -4,8 +4,8 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import DateTime, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
@@ -23,10 +23,34 @@ PROJECT_STATUSES = [
 ]
 
 
+class Topic(Base):
+    __tablename__ = "topics"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    topic: Mapped[str] = mapped_column(String(512), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+
+    projects: Mapped[list["Project"]] = relationship(
+        "Project", back_populates="topic_rel", lazy="select"
+    )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "topic": self.topic,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class Project(Base):
     __tablename__ = "projects"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    topic_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("topics.id"), nullable=False, index=True
+    )
     title: Mapped[str] = mapped_column(String(512), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="idea")
     tags_json: Mapped[str] = mapped_column("tags", Text, nullable=False, default="[]")
@@ -44,9 +68,12 @@ class Project(Base):
         nullable=False,
     )
 
+    topic_rel: Mapped["Topic"] = relationship("Topic", back_populates="projects")
+
     # ------------------------------------------------------------------ helpers
 
     def get_tags(self) -> list[str]:
+
         return json.loads(self.tags_json or "[]")
 
     def get_metadata(self) -> dict[str, Any]:
@@ -64,6 +91,7 @@ class Project(Base):
     def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
+            "topic_id": self.topic_id,
             "title": self.title,
             "status": self.status,
             "tags": self.get_tags(),
