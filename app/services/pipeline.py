@@ -231,11 +231,12 @@ async def run_tts_stage(project_id: str) -> None:
                 audio_path = os.path.join(out_dir, f"scene_{i:03d}_tts.wav")
                 with open(audio_path, "wb") as f:
                     f.write(audio_bytes)
+                real_duration = _audio_duration(audio_path, float(scene.get("duration") or 5))
                 log.info(
-                    "tts_stage: scene %d/%d done  size=%s  elapsed=%s  path=%s",
-                    i + 1, len(scenes), _kb(len(audio_bytes)), _elapsed(t_tts), audio_path,
+                    "tts_stage: scene %d/%d done  size=%s  elapsed=%s  duration=%.2fs  path=%s",
+                    i + 1, len(scenes), _kb(len(audio_bytes)), _elapsed(t_tts), real_duration, audio_path,
                 )
-                updated_scenes.append({**scene, "audio_path": audio_path})
+                updated_scenes.append({**scene, "audio_path": audio_path, "duration": real_duration})
             else:
                 log.debug("tts_stage: scene %d/%d skipped (no voiceover)", i + 1, len(scenes))
                 updated_scenes.append(scene)
