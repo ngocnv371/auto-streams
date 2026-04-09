@@ -1,0 +1,41 @@
+database:
+  path: ./data/auto-streams.db
+
+temp_dir: ./temp
+
+providers:
+  text: gemini          # gemini | openai
+  image: comfy          # gemini | comfy
+  tts: kittentts        # gemini | kittentts
+  music: comfy          # comfy
+
+gemini:
+  api_key: YOUR_KEY
+  model: gemini-2.0-flash
+
+openai:
+  base_url: http://localhost:11434/v1    # any OpenAI-compatible endpoint
+  api_key: ollama
+  model: llama3.2
+
+comfy:
+  base_url: http://127.0.0.1:8188
+  workflows:
+    image: ./assets/comfy-zimage.json
+    music: ./assets/comfy-music.json
+
+kittentts:
+  model: en_US-amy-medium               # Piper voice model
+
+video:
+  enableKenBurns: true
+  enableParticles: false
+  subtitleStyle:
+    font: Arial
+    fontSize: 24
+    color: white
+    stroke: black
+
+server:
+  host: 0.0.0.0
+  port: 8000

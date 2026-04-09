@@ -1,0 +1,11 @@
+__pycache__
+config.json
+venv/
+niche.txt
+*.exe
+auto.sh
+.DS_Store
+geckodriver.log
+.vscode/launch.json
+config.yml
+data/*.db
