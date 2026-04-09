@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_session
 from app.models import Project, Topic
 from app.schemas import ProjectCreate, ProjectOut, ProjectStatusUpdate, ProjectUpdate
-from app.services.pipeline import run_full_pipeline
+from app.services.pipeline import run_full_pipeline, run_render_stage
 
 router = APIRouter()
 
@@ -104,6 +104,21 @@ async def run_project_pipeline(project_id: str, session: Session, background_tas
     return project.to_dict()
 
 
+@router.post("/{project_id}/render", response_model=ProjectOut)
+async def render_project(project_id: str, session: Session, background_tasks: BackgroundTasks):
+    """Force a re-render stage. Accepts failed, images_ready, or clips_ready projects."""
+    project = await _get_or_404(session, project_id)
+    if project.status not in ("failed", "images_ready", "clips_ready"):
+        raise HTTPException(400, "Project must be in 'failed', 'images_ready', or 'clips_ready' status to re-render")
+    if project.status == "failed":
+        project.status = "images_ready"
+        project.touch()
+        await session.commit()
+        await session.refresh(project)
+    background_tasks.add_task(_process_render, project_id)
+    return project.to_dict()
+
+
 @router.post("/{project_id}/approve", response_model=ProjectOut)
 async def approve_project(project_id: str, session: Session):
     project = await _get_or_404(session, project_id)
@@ -179,3 +194,8 @@ async def _get_or_404(session: AsyncSession, project_id: str) -> Project:
 async def _process_pipeline(project_id: str) -> None:
     """Background task — runs the full generation pipeline for an approved project."""
     await run_full_pipeline(project_id)
+
+
+async def _process_render(project_id: str) -> None:
+    """Background task — runs only the render stage."""
+    await run_render_stage(project_id)

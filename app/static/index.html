@@ -336,6 +336,9 @@
   .btn-sm.run  { border-color: var(--success); color: var(--success); }
   .btn-sm.run:hover  { background: var(--success); color: #fff; }
   .btn-sm.run:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-sm.rerender  { border-color: var(--s-clips_ready); color: var(--s-clips_ready); }
+  .btn-sm.rerender:hover  { background: var(--s-clips_ready); color: #fff; }
+  .btn-sm.rerender:disabled { opacity: .45; cursor: not-allowed; }
 
   /* ── Badges ── */
   .badge { display: inline-block; padding: .15rem .55rem; border-radius: 20px; font-size: .72rem; font-weight: 600; white-space: nowrap; }
@@ -830,6 +833,7 @@ async function loadProjects() {
               ${p.status==='idea'?`<button class="btn-sm approve" onclick="approveProject('${p.id}')">Approve</button>`:''}
               ${['idea','approved'].includes(p.status)?`<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`:''}
               ${p.status==='approved'?`<button class="btn-sm run" onclick="runPipeline('${p.id}')">▶ Run</button>`:''}
+              ${['failed','images_ready','clips_ready'].includes(p.status)?`<button class="btn-sm rerender" onclick="reRender('${p.id}')">↺ Re-render</button>`:''}
               <button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>
             </td>
           </tr>`).join('')}
@@ -941,6 +945,15 @@ async function rejectProject(id) {
     if (_detailId === id) openDetail(id);
   } catch (e) { toast(e.message, 'error'); }
 }
+async function reRender(id) {
+  if (!confirm('Force re-render this project? The render stage will run from the beginning.')) return;
+  try {
+    await api('POST', `/projects/${id}/render`);
+    toast('Re-render started', 'success');
+    loadProjects(); loadDashboard();
+    if (_detailId === id) openDetail(id);
+  } catch (e) { toast(e.message, 'error'); }
+}
 async function deleteProject(id) {
   if (!confirm('Delete this project permanently?')) return;
   try {
@@ -977,6 +990,7 @@ function renderDetail(p) {
   if (p.status === 'idea') actions += `<button class="btn-sm approve" onclick="approveProject('${p.id}')">Approve</button>`;
   if (['idea','approved'].includes(p.status)) actions += `<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`;
   if (p.status === 'approved') actions += `<button class="btn-sm run" id="run-btn-${p.id}" onclick="runPipeline('${p.id}')">▶ Run Pipeline</button>`;
+  if (['failed','images_ready','clips_ready'].includes(p.status)) actions += `<button class="btn-sm rerender" onclick="reRender('${p.id}')">↺ Re-render</button>`;
   actions += `<button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>`;
   $('dp-actions').innerHTML = actions;
 
