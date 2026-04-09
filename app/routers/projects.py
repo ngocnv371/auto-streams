@@ -110,11 +110,17 @@ async def render_project(project_id: str, session: Session, background_tasks: Ba
     project = await _get_or_404(session, project_id)
     if project.status not in ("done", "failed", "images_ready", "clips_ready"):
         raise HTTPException(400, "Project must be in 'failed', 'images_ready', or 'clips_ready' status to re-render")
-    if project.status == "failed":
-        project.status = "images_ready"
-        project.touch()
-        await session.commit()
-        await session.refresh(project)
+    project.status = "images_ready"
+    project.touch()
+    await session.commit()
+    await session.refresh(project)
+    from app.config import get_config
+    cfg = get_config()
+    proj_dir = os.path.join(cfg.temp_dir, project_id)
+    if os.path.isdir(proj_dir):
+        for f in os.listdir(proj_dir):
+            if f.endswith(".mp4"):
+                os.remove(os.path.join(proj_dir, f))
     background_tasks.add_task(_process_render, project_id)
     return project.to_dict()
 
