@@ -179,6 +179,20 @@ async def serve_image(project_id: str, filename: str, session: Session):
     return FileResponse(image_path, media_type="image/png")
 
 
+@router.get("/{project_id}/video/{filename}", include_in_schema=False)
+async def serve_video(project_id: str, filename: str, session: Session):
+    """Stream the final rendered video for in-browser preview."""
+    if not re.fullmatch(r"[\w\-]+\.mp4", filename):
+        raise HTTPException(400, "Invalid filename")
+    project = await _get_or_404(session, project_id)
+    from app.config import get_config
+    cfg = get_config()
+    video_path = os.path.join(cfg.temp_dir, project_id, filename)
+    if not os.path.isfile(video_path):
+        raise HTTPException(404, "Video file not found")
+    return FileResponse(video_path, media_type="video/mp4")
+
+
 # ------------------------------------------------------------------ helpers
 
 async def _get_or_404(session: AsyncSession, project_id: str) -> Project:

@@ -467,6 +467,10 @@
   .music-audio audio { width: 100%; height: 32px; border-radius: 6px; accent-color: var(--primary); }
   .empty { color: var(--muted); font-size: .875rem; text-align: center; padding: 2.5rem 0; }
 
+  /* ── Video preview ── */
+  .video-preview { width: 100%; border-radius: 8px; overflow: hidden; background: #000; }
+  .video-preview video { width: 100%; display: block; max-height: 320px; }
+
   /* ── Toast ── */
   #toast {
     position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
@@ -1008,6 +1012,16 @@ function renderDetail(p) {
   ].filter(([,v]) => v != null);
 
   let body = '';
+  const videoFile = meta.video_path ? meta.video_path.replace(/\\/g,'/').split('/').pop() : null;
+  if (p.status === 'done' && videoFile) {
+    const videoSrc = `/api/projects/${p.id}/video/${encodeURIComponent(videoFile)}`;
+    body += `<div class="detail-section">
+      <div class="detail-section-title">Preview</div>
+      <div class="video-preview">
+        <video controls preload="metadata" src="${videoSrc}"></video>
+      </div>
+    </div>`;
+  }
   if (metaFields.length) {
     body += `<div class="detail-section">
       <div class="detail-section-title">Metadata</div>
