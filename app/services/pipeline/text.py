@@ -62,13 +62,10 @@ async def run_text_stage(project_id: str) -> None:
             '  "narrator": "narrator character or tone description",\n'
             '  "music": "background music style/mood description",\n'
             '  "visual_guide": "overall visual style (colour palette, camera feel, etc.)",\n'
-            '  "duration": 60,\n'
-            '  "word_count": 120,\n'
             '  "scenes": [\n'
             '    {\n'
             '      "voiceover": "exact words spoken in this scene",\n'
-            '      "image_prompt": "detailed image generation prompt for this scene",\n'
-            '      "duration": 10\n'
+            '      "image_prompt": "detailed image generation prompt for this scene"\n'
             "    }\n"
             "  ]\n"
             "}"
@@ -84,29 +81,28 @@ async def run_text_stage(project_id: str) -> None:
         if not scenes:
             raise ValueError("LLM returned no scenes in the response")
 
+        transcript = str(data.get("transcript", ""))
+        word_count = len(transcript.split())
         log.info(
-            "text_stage: parsed ok  scenes=%d  duration=%ss  word_count=%s  narrator=%r",
+            "text_stage: parsed ok  scenes=%d  word_count=%d  narrator=%r",
             len(scenes),
-            data.get("duration", "?"),
-            data.get("word_count", "?"),
+            word_count,
             str(data.get("narrator", ""))[:60],
         )
         for i, s in enumerate(scenes):
             log.debug(
-                "text_stage: scene %d/%d  duration=%ss  voiceover=%r  image_prompt=%r",
+                "text_stage: scene %d/%d  voiceover=%r  image_prompt=%r",
                 i + 1, len(scenes),
-                s.get("duration", "?"),
                 str(s.get("voiceover", ""))[:80],
                 str(s.get("image_prompt", ""))[:80],
             )
 
         meta = {
-            "transcript":   str(data.get("transcript", "")),
+            "transcript":   transcript,
             "narrator":     str(data.get("narrator", "")),
             "music":        str(data.get("music", "")),
             "visual_guide": str(data.get("visual_guide", "")),
-            "duration":     int(data.get("duration") or 60),
-            "word_count":   int(data.get("word_count") or 0),
+            "word_count":   word_count,
             "scenes":       scenes,
         }
         if existing_summary:

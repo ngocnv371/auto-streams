@@ -77,7 +77,7 @@ async def run_tts_stage(project_id: str) -> None:
 
         # ── Background music ─────────────────────────────────────────
         music_prompt = meta.get("music") or "calm ambient background music"
-        duration = int(meta.get("duration") or 60)
+        duration = int(round(sum(s.get("duration", 0) for s in updated_scenes))) or 60
         log.info(
             "tts_stage: generating music  prompt=%r  duration=%ds",
             music_prompt[:80], duration,
@@ -97,6 +97,7 @@ async def run_tts_stage(project_id: str) -> None:
             p = await session.get(Project, project_id)
             m = p.get_metadata()
             m["scenes"] = updated_scenes
+            m["duration"] = duration
             m["music_path"] = music_path
             p.set_metadata(m)
             p.status = "audio_ready"
