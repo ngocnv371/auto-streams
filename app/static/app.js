@@ -1,0 +1,492 @@
+// ═══════════════════════════════════════════════════════════
+//  Utils
+// ═══════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+
+function toast(msg, type = 'success') {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = ''; }, 2800);
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  const res = await fetch('/api' + path, opts);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || res.statusText);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+function badge(status) {
+  return `<span class="badge badge-${status}">${status.replace(/_/g,' ')}</span>`;
+}
+function statusColor(s) {
+  return ({idea:'var(--s-idea)',approved:'var(--s-approved)',content_ready:'var(--s-content_ready)',
+    scenes_ready:'var(--s-scenes_ready)',audio_ready:'var(--s-audio_ready)',images_ready:'var(--s-images_ready)',
+    clips_ready:'var(--s-clips_ready)',done:'var(--s-done)',failed:'var(--s-failed)'})[s]||'var(--text)';
+}
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+function escHtml(s) {
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════════════════════
+let currentTopicId   = localStorage.getItem('as_topic_id')   || null;
+let currentTopicText = localStorage.getItem('as_topic_text') || null;
+let allTopics  = [];
+let activePage = 'splash';
+let selectedCount = 5;
+
+// ═══════════════════════════════════════════════════════════
+//  Topic workspace
+// ═══════════════════════════════════════════════════════════
+function toggleTopicDropdown(e) {
+  e.stopPropagation();
+  $('topic-dropdown').classList.toggle('open');
+  if ($('topic-dropdown').classList.contains('open')) {
+    setTimeout(() => $('topic-add-input').focus(), 50);
+  }
+}
+
+document.addEventListener('click', e => {
+  if (!$('topic-ws').contains(e.target)) $('topic-dropdown').classList.remove('open');
+});
+
+async function loadTopics() {
+  try { allTopics = await api('GET', '/topics'); } catch { allTopics = []; }
+  if (currentTopicId && !allTopics.find(t => t.id === currentTopicId)) {
+    currentTopicId = null; currentTopicText = null;
+    localStorage.removeItem('as_topic_id'); localStorage.removeItem('as_topic_text');
+  }
+  renderTopicDropdown();
+  applyTopic();
+}
+
+function renderTopicDropdown() {
+  const list = $('topic-list-dd');
+  if (!allTopics.length) {
+    list.innerHTML = '<div class="topic-empty">No topics yet — add one below.</div>';
+    return;
+  }
+  list.innerHTML = allTopics.map(t => `
+    <div class="topic-item ${t.id === currentTopicId ? 'selected' : ''}"
+         onclick="selectTopic('${escHtml(t.id)}', ${escHtml(JSON.stringify(t.topic))})">
+      <span class="topic-text" title="${escHtml(t.topic)}">${escHtml(t.topic)}</span>
+      <button class="topic-del" title="Delete" onclick="deleteTopic(event,'${escHtml(t.id)}')">✕</button>
+    </div>`).join('');
+}
+
+function selectTopic(id, text) {
+  currentTopicId = id; currentTopicText = text;
+  localStorage.setItem('as_topic_id', id);
+  localStorage.setItem('as_topic_text', text);
+  $('topic-dropdown').classList.remove('open');
+  applyTopic();
+  refreshCurrentPage();
+}
+
+function applyTopic() {
+  const btn = $('topic-ws-btn');
+  if (currentTopicId) {
+    btn.classList.remove('no-topic');
+    $('topic-ws-label').textContent = currentTopicText || 'Topic selected';
+    $('btn-generate').disabled = false;
+  } else {
+    btn.classList.add('no-topic');
+    $('topic-ws-label').textContent = 'Select a topic…';
+    $('btn-generate').disabled = true;
+  }
+  renderTopicDropdown();
+  if (!currentTopicId) switchPage('splash');
+  else if (activePage === 'splash') { switchPage('dashboard'); loadDashboard(); }
+}
+
+async function addTopic() {
+  const input = $('topic-add-input');
+  const text = input.value.trim();
+  if (!text) return;
+  try {
+    const t = await api('POST', '/topics', { topic: text });
+    allTopics.push(t);
+    input.value = '';
+    selectTopic(t.id, t.topic);
+    toast('Topic created', 'success');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function deleteTopic(e, id) {
+  e.stopPropagation();
+  const t = allTopics.find(t => t.id === id);
+  if (!confirm(`Delete topic "${t?.topic}"?\nThis will fail if it has associated projects.`)) return;
+  try {
+    await api('DELETE', `/topics/${id}`);
+    allTopics = allTopics.filter(t => t.id !== id);
+    if (currentTopicId === id) {
+      currentTopicId = null; currentTopicText = null;
+      localStorage.removeItem('as_topic_id'); localStorage.removeItem('as_topic_text');
+    }
+    toast('Topic deleted', 'success');
+    renderTopicDropdown();
+    applyTopic();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Navigation
+// ═══════════════════════════════════════════════════════════
+function switchPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  $(`page-${id}`).classList.add('active');
+  activePage = id;
+}
+
+function showPage(id, tab) {
+  if (!currentTopicId) { toast('Select a topic first', 'error'); return; }
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  switchPage(id);
+  if (id === 'dashboard') loadDashboard();
+  if (id === 'projects')  loadProjects();
+}
+
+function refreshCurrentPage() {
+  if (activePage === 'dashboard') loadDashboard();
+  if (activePage === 'projects')  loadProjects();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Dashboard
+// ═══════════════════════════════════════════════════════════
+const PIPELINE_STATUSES = ['idea','approved','content_ready','scenes_ready','audio_ready','images_ready','clips_ready','done','failed'];
+
+async function loadDashboard() {
+  if (!currentTopicId) return;
+  try {
+    const data = await api('GET', `/dashboard?topic_id=${currentTopicId}`);
+    const sc = data.status_counts;
+    $('s-total').textContent  = data.total;
+    $('s-done').textContent   = sc.done   || 0;
+    $('s-failed').textContent = sc.failed || 0;
+    $('s-idea').textContent   = sc.idea   || 0;
+
+    $('pipeline-steps').innerHTML = PIPELINE_STATUSES.map(s => `
+      <div class="pipeline-step" style="border-top:3px solid ${statusColor(s)}">
+        <div class="step-count" style="color:${statusColor(s)}">${sc[s]??0}</div>
+        <div class="step-label">${s.replace(/_/g,' ')}</div>
+      </div>`).join('');
+
+    const labels = {text_queue:'Text / LLM',tts_queue:'TTS Audio',music_queue:'Music',image_queue:'Images',render_queue:'Render'};
+    const qc = data.queue_counts;
+    $('queue-grid').innerHTML = Object.entries(labels).map(([k,label]) => `
+      <div class="queue-card">
+        <div class="queue-name">${label}</div>
+        <div class="queue-count" id="qc-${k}">${qc[k]??0}</div>
+        <div class="queue-label">pending</div>
+        <button class="queue-run" id="qrun-${k}" ${(qc[k]??0)===0?'disabled':''} onclick="runQueue('${k}')">▶ Run</button>
+      </div>`).join('');
+  } catch (e) { toast('Dashboard error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Projects
+// ═══════════════════════════════════════════════════════════
+let _debounceT = null;
+function debounceLoadProjects() {
+  clearTimeout(_debounceT);
+  _debounceT = setTimeout(loadProjects, 280);
+}
+
+async function loadProjects() {
+  if (!currentTopicId) return;
+  const search = $('search-input').value.trim();
+  const status = $('status-filter').value;
+  const params = new URLSearchParams({ topic_id: currentTopicId, limit: '200' });
+  if (search) params.set('search', search);
+  if (status) params.set('status', status);
+  const wrap = $('projects-table-wrap');
+  try {
+    const projects = await api('GET', `/projects?${params}`);
+    if (!projects.length) {
+      wrap.innerHTML = '<div class="empty">No projects yet — Generate Ideas to get started.</div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <table>
+        <thead><tr><th>Title</th><th>Status</th><th>Tags</th><th>Created</th><th>Actions</th></tr></thead>
+        <tbody>${projects.map(p => `
+          <tr onclick="openDetail('${p.id}')">
+            <td class="td-title">${escHtml(p.title)}</td>
+            <td>${badge(p.status)}</td>
+            <td class="td-tags">${p.tags.map(t=>`<span class="tag">${escHtml(t)}</span>`).join('')||'<span class="text-muted">—</span>'}</td>
+            <td class="td-date">${fmtDate(p.created_at)}</td>
+            <td class="td-actions" onclick="event.stopPropagation()">
+              ${p.status==='idea'?`<button class="btn-sm approve" onclick="approveProject('${p.id}')">Approve</button>`:''}
+              ${['idea','approved'].includes(p.status)?`<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`:''}
+              ${p.status==='approved'?`<button class="btn-sm run" onclick="runPipeline('${p.id}')">▶ Run</button>`:''}
+              ${['done', 'failed','images_ready','clips_ready'].includes(p.status)?`<button class="btn-sm rerender" onclick="reRender('${p.id}')">↺ Re-render</button>`:''}
+              <button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty">Error: ${escHtml(e.message)}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Generate Ideas modal
+// ═══════════════════════════════════════════════════════════
+function selectCount(n) {
+  selectedCount = n;
+  document.querySelectorAll('.count-option').forEach(el => {
+    el.classList.toggle('selected', parseInt(el.textContent) === n);
+  });
+}
+
+function openGenerateModal() {
+  if (!currentTopicId) return;
+  $('gen-modal-sub').textContent = `Topic: ${currentTopicText}`;
+  $('gen-results').innerHTML = '';
+  $('gen-count-field').style.display = '';
+  $('gen-actions').innerHTML = `
+    <button class="btn-secondary" onclick="closeGenerateModal()">Cancel</button>
+    <button class="btn-primary" onclick="submitGenerate()"><span>Generate</span></button>`;
+  $('gen-modal').classList.add('open');
+}
+function closeGenerateModal() { $('gen-modal').classList.remove('open'); }
+
+async function submitGenerate() {
+  $('gen-count-field').style.display = 'none';
+  $('gen-results').innerHTML = '';
+  $('gen-actions').innerHTML = `
+    <button class="btn-secondary" disabled>Cancel</button>
+    <button class="btn-primary" disabled><div class="spinner"></div><span>Generating…</span></button>`;
+  try {
+    const ideas = await api('POST', '/ideas/generate', { topic_id: currentTopicId, count: selectedCount });
+    $('gen-results').innerHTML = `
+      <div style="font-size:.8rem;color:var(--success);margin-bottom:.5rem;">✓ ${ideas.length} idea${ideas.length!==1?'s':''} created</div>
+      <div class="generated-list">${ideas.map(p=>`
+        <div class="gen-item">
+          <div class="gen-title">${escHtml(p.title)}</div>
+          ${p.metadata?.summary?`<div class="gen-summary">${escHtml(p.metadata.summary)}</div>`:''}
+        </div>`).join('')}
+      </div>`;
+    $('gen-actions').innerHTML = `<button class="btn-primary" onclick="closeGenerateModal()">Done</button>`;
+    loadDashboard();
+    if (activePage === 'projects') loadProjects();
+    toast(`${ideas.length} ideas generated`, 'success');
+  } catch (e) {
+    $('gen-results').innerHTML = `<div style="color:var(--danger);font-size:.85rem;margin-bottom:.5rem;">Error: ${escHtml(e.message)}</div>`;
+    $('gen-count-field').style.display = '';
+    $('gen-actions').innerHTML = `
+      <button class="btn-secondary" onclick="closeGenerateModal()">Cancel</button>
+      <button class="btn-primary" onclick="submitGenerate()"><span>Retry</span></button>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Project actions
+// ═══════════════════════════════════════════════════════════
+async function runQueue(queue) {
+  const btn = $(`qrun-${queue}`);
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const params = new URLSearchParams({ queue });
+    if (currentTopicId) params.set('topic_id', currentTopicId);
+    const res = await api('POST', `/dashboard/run-queue?${params}`);
+    toast(`${res.queued} project${res.queued !== 1 ? 's' : ''} queued for ${queue.replace(/_/g,' ')}`, 'success');
+    loadDashboard();
+  } catch (e) {
+    toast(e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '▶ Run'; }
+  }
+}
+
+async function runPipeline(id) {
+  const btn = document.querySelector(`[id="run-btn-${id}"]`);
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    await api('POST', `/projects/${id}/run`);
+    toast('Pipeline started', 'success');
+    loadDashboard();
+    if (activePage === 'projects') loadProjects();
+    if (_detailId === id) openDetail(id);
+  } catch (e) {
+    toast(e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '▶ Run Pipeline'; }
+  }
+}
+
+async function approveProject(id) {
+  try {
+    await api('POST', `/projects/${id}/approve`);
+    toast('Approved', 'success');
+    loadProjects(); loadDashboard();
+    if (_detailId === id) openDetail(id);
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function rejectProject(id) {
+  if (!confirm('Reject this project?')) return;
+  try {
+    await api('POST', `/projects/${id}/reject`);
+    toast('Rejected', 'success');
+    loadProjects(); loadDashboard();
+    if (_detailId === id) openDetail(id);
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function reRender(id) {
+  if (!confirm('Force re-render this project? The render stage will run from the beginning.')) return;
+  try {
+    await api('POST', `/projects/${id}/render`);
+    toast('Re-render started', 'success');
+    loadProjects(); loadDashboard();
+    if (_detailId === id) openDetail(id);
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function deleteProject(id) {
+  if (!confirm('Delete this project permanently?')) return;
+  try {
+    await api('DELETE', `/projects/${id}`);
+    toast('Deleted', 'success');
+    loadProjects(); loadDashboard();
+    if (_detailId === id) closeDetail();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Detail panel
+// ═══════════════════════════════════════════════════════════
+let _detailId = null;
+
+async function openDetail(id) {
+  _detailId = id;
+  try {
+    const p = await api('GET', `/projects/${id}`);
+    renderDetail(p);
+    $('detail-overlay').classList.add('open');
+    $('detail-panel').classList.add('open');
+  } catch (e) { toast(e.message, 'error'); }
+}
+function closeDetail() {
+  _detailId = null;
+  $('detail-overlay').classList.remove('open');
+  $('detail-panel').classList.remove('open');
+}
+function renderDetail(p) {
+  $('dp-title').textContent = p.title;
+  $('dp-meta').innerHTML = `${badge(p.status)} &nbsp;·&nbsp; <span class="text-muted">${escHtml(p.id)}</span> &nbsp;·&nbsp; ${fmtDate(p.created_at)}`;
+  let actions = '';
+  if (p.status === 'idea') actions += `<button class="btn-sm approve" onclick="approveProject('${p.id}')">Approve</button>`;
+  if (['idea','approved'].includes(p.status)) actions += `<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`;
+  if (p.status === 'approved') actions += `<button class="btn-sm run" id="run-btn-${p.id}" onclick="runPipeline('${p.id}')">▶ Run Pipeline</button>`;
+  if (['failed','images_ready','clips_ready'].includes(p.status)) actions += `<button class="btn-sm rerender" onclick="reRender('${p.id}')">↺ Re-render</button>`;
+  actions += `<button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>`;
+  $('dp-actions').innerHTML = actions;
+
+  const meta = p.metadata || {};
+  const scenes = meta.scenes || [];
+  const metaFields = [
+    ['Summary',      meta.summary],
+    ['Transcript',   meta.transcript],
+    ['Narrator',     meta.narrator],
+    ['Music prompt', meta.music],
+    ['Visual guide', meta.visual_guide],
+    ['Duration',     meta.duration != null ? `${meta.duration}s` : null],
+    ['Word count',   meta.word_count],
+    ['Tags',         p.tags.length ? p.tags.join(', ') : null],
+  ].filter(([,v]) => v != null);
+
+  let body = '';
+  const videoFile = meta.video_path ? meta.video_path.replace(/\\/g,'/').split('/').pop() : null;
+  if (p.status === 'done' && videoFile) {
+    const videoSrc = `/api/projects/${p.id}/video/${encodeURIComponent(videoFile)}`;
+    body += `<div class="detail-section">
+      <div class="detail-section-title">Preview</div>
+      <div class="video-preview">
+        <video controls preload="metadata" src="${videoSrc}"></video>
+      </div>
+    </div>`;
+  }
+  if (metaFields.length) {
+    body += `<div class="detail-section">
+      <div class="detail-section-title">Metadata</div>
+      <div class="meta-grid">${metaFields.map(([k,v])=>`
+        <div class="meta-item">
+          <div class="meta-key">${escHtml(k)}</div>
+          <div class="meta-val pre">${escHtml(String(v))}</div>
+        </div>`).join('')}
+      </div></div>`;
+  }
+  const mediaLinks = [['Music',meta.music_url],['Narration',meta.audio_url],['Video',meta.video_url],['Thumbnail',meta.thumbnail_url]].filter(([,v])=>v);
+  if (mediaLinks.length) {
+    body += `<div class="detail-section">
+      <div class="detail-section-title">Media</div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">${mediaLinks.map(([l,u])=>`<a class="asset-chip" href="${escHtml(u)}" target="_blank">${escHtml(l)}</a>`).join('')}</div>
+    </div>`;
+  }
+  const audioBase = `/api/projects/${p.id}/audio`;
+  const fnFromPath = path => path ? path.replace(/\\/g,'/').split('/').pop() : null;
+  if (scenes.length) {
+    body += `<div class="detail-section">
+      <div class="detail-section-title">Scenes (${scenes.length})</div>
+      <div class="scenes-list">${scenes.map((s,i)=>{
+        const assets=[s.audio_url&&'Audio',s.image_url&&'Image',s.clip_url&&'Clip'].filter(Boolean);
+        const audioFile = fnFromPath(s.audio_path);
+        const imageFile = fnFromPath(s.image_path);
+        const imageBase = `/api/projects/${p.id}/image`;
+        return `<div class="scene-card">
+          ${imageFile?`<div class="scene-thumb"><img loading="lazy" src="${imageBase}/${encodeURIComponent(imageFile)}" alt="Scene ${i+1}"></div>`:''}
+          <div class="scene-body">
+            <div class="scene-num">Scene ${i+1}${s.duration!=null?` · ${s.duration}s`:''}</div>
+            <div class="scene-voiceover">${escHtml(s.voiceover||'')}</div>
+            ${s.image_prompt?`<div class="scene-prompt">${escHtml(s.image_prompt)}</div>`:''}
+            ${audioFile?`<div class="scene-audio"><audio controls preload="none" src="${audioBase}/${encodeURIComponent(audioFile)}"></audio></div>`:''}
+            ${assets.length?`<div class="scene-assets">${assets.map(a=>`<span class="asset-chip">${a}</span>`).join('')}</div>`:''}
+          </div>
+        </div>`;
+      }).join('')}</div></div>`;
+  }
+  const musicFile = fnFromPath(meta.music_path);
+  if (musicFile) {
+    body += `<div class="detail-section">
+      <div class="detail-section-title">Background Music</div>
+      <div class="music-audio"><audio controls preload="none" src="${audioBase}/${encodeURIComponent(musicFile)}"></audio></div>
+    </div>`;
+  }
+  $('dp-body').innerHTML = body || '<div class="empty">No content yet.</div>';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Keyboard
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if ($('gen-modal').classList.contains('open')) closeGenerateModal();
+    else if ($('detail-panel').classList.contains('open')) closeDetail();
+    else $('topic-dropdown').classList.remove('open');
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  Init
+// ═══════════════════════════════════════════════════════════
+loadTopics().then(() => {
+  if (currentTopicId) {
+    switchPage('dashboard');
+    $('tab-dashboard').classList.add('active');
+    loadDashboard();
+  }
+});
