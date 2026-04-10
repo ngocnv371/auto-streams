@@ -356,6 +356,14 @@ async function reRender(id) {
     if (_detailId === id) openDetail(id);
   } catch (e) { toast(e.message, 'error'); }
 }
+async function setProjectStatus(id, status) {
+  try {
+    await api('PUT', `/projects/${id}/status`, { status });
+    toast(`Status set to ${status}`, 'success');
+    loadProjects(); loadDashboard();
+    if (_detailId === id) openDetail(id);
+  } catch (e) { toast(e.message, 'error'); }
+}
 async function deleteProject(id) {
   if (!confirm('Delete this project permanently?')) return;
   try {
@@ -393,6 +401,8 @@ function renderDetail(p) {
   if (['idea','approved'].includes(p.status)) actions += `<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`;
   if (p.status === 'approved') actions += `<button class="btn-sm run" id="run-btn-${p.id}" onclick="runPipeline('${p.id}')">▶ Run Pipeline</button>`;
   if (['failed','images_ready','clips_ready'].includes(p.status)) actions += `<button class="btn-sm rerender" onclick="reRender('${p.id}')">↺ Re-render</button>`;
+  const allStatuses = ['idea','approved','content_ready','scenes_ready','audio_ready','images_ready','clips_ready','done','failed'];
+  actions += `<select class="select-filter status-jump" onchange="setProjectStatus('${p.id}', this.value)" title="Set status">${allStatuses.map(s=>`<option value="${s}"${s===p.status?' selected':''}>${s.replace(/_/g,' ')}</option>`).join('')}</select>`;
   actions += `<button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>`;
   $('dp-actions').innerHTML = actions;
 

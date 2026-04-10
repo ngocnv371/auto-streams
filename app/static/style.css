@@ -435,7 +435,8 @@ tbody td { padding: .65rem .75rem; vertical-align: middle; }
 .detail-meta { font-size: .78rem; color: var(--muted); }
 .detail-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.25rem; padding: 0; line-height: 1; flex-shrink: 0; }
 .detail-close:hover { color: var(--text); }
-.detail-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.detail-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1.25rem; align-items: center; }
+.detail-actions .status-jump { padding: .3rem .5rem; font-size: .8rem; height: 2rem; }
 .detail-section { margin-bottom: 1.25rem; }
 .detail-section-title { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin-bottom: .6rem; }
 .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
