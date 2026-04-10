@@ -377,7 +377,8 @@ async function deleteProject(id) {
 // ═══════════════════════════════════════════════════════════
 //  Detail panel
 // ═══════════════════════════════════════════════════════════
-let _detailId = null;
+let _detailId   = null;
+let _detailData = null;
 
 async function openDetail(id) {
   _detailId = id;
@@ -389,14 +390,16 @@ async function openDetail(id) {
   } catch (e) { toast(e.message, 'error'); }
 }
 function closeDetail() {
-  _detailId = null;
+  _detailId   = null;
+  _detailData = null;
   $('detail-overlay').classList.remove('open');
   $('detail-panel').classList.remove('open');
 }
 function renderDetail(p) {
+  _detailData = p;
   $('dp-title').textContent = p.title;
   $('dp-meta').innerHTML = `${badge(p.status)} &nbsp;·&nbsp; <span class="text-muted">${escHtml(p.id)}</span> &nbsp;·&nbsp; ${fmtDate(p.created_at)}`;
-  let actions = '';
+  let actions = `<button class="btn-sm edit" onclick="toggleEditMode()">✎ Edit</button>`;
   if (p.status === 'idea') actions += `<button class="btn-sm approve" onclick="approveProject('${p.id}')">Approve</button>`;
   if (['idea','approved'].includes(p.status)) actions += `<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`;
   if (p.status === 'approved') actions += `<button class="btn-sm run" id="run-btn-${p.id}" onclick="runPipeline('${p.id}')">▶ Run Pipeline</button>`;
@@ -477,6 +480,128 @@ function renderDetail(p) {
     </div>`;
   }
   $('dp-body').innerHTML = body || '<div class="empty">No content yet.</div>';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Detail panel – edit mode
+// ═══════════════════════════════════════════════════════════
+function toggleEditMode() {
+  if (!_detailData) return;
+  const p = _detailData;
+  // Replace title with an input
+  $('dp-title').innerHTML = `<input class="edit-title-input" id="edit-title" value="${escHtml(p.title)}" />`;
+  // Replace actions with Save / Cancel
+  $('dp-actions').innerHTML = `
+    <button class="btn-sm save" onclick="saveProjectEdits('${p.id}')">✔ Save</button>
+    <button class="btn-sm" onclick="renderDetail(_detailData)">✕ Cancel</button>`;
+  // Render editable body
+  const meta   = p.metadata || {};
+  const scenes = meta.scenes || [];
+  let body = '';
+
+  // Tags
+  body += `<div class="detail-section">
+    <div class="detail-section-title">Tags</div>
+    <input class="edit-input" id="edit-tags" placeholder="comma-separated tags"
+           value="${escHtml(p.tags.join(', '))}" />
+  </div>`;
+
+  // Metadata fields
+  body += `<div class="detail-section">
+    <div class="detail-section-title">Metadata</div>
+    <div class="edit-fields">`;
+  const inputFields = [
+    ['narrator',   'Narrator',     meta.narrator   ?? ''],
+    ['duration',   'Duration (s)', meta.duration   ?? ''],
+    ['word_count', 'Word Count',   meta.word_count ?? ''],
+  ];
+  for (const [key, label, val] of inputFields) {
+    body += `<div class="edit-field">
+      <label class="edit-label">${escHtml(label)}</label>
+      <input class="edit-input" id="edit-meta-${key}" value="${escHtml(String(val))}" />
+    </div>`;
+  }
+  const textareaFields = [
+    ['summary',      'Summary',      meta.summary      || ''],
+    ['transcript',   'Transcript',   meta.transcript   || ''],
+    ['music',        'Music Prompt', meta.music        || ''],
+    ['visual_guide', 'Visual Guide', meta.visual_guide || ''],
+  ];
+  for (const [key, label, val] of textareaFields) {
+    body += `<div class="edit-field">
+      <label class="edit-label">${escHtml(label)}</label>
+      <textarea class="edit-textarea" id="edit-meta-${key}" rows="3">${escHtml(val)}</textarea>
+    </div>`;
+  }
+  body += `</div></div>`;
+
+  // Scenes
+  if (scenes.length) {
+    body += `<div class="detail-section">
+      <div class="detail-section-title">Scenes (${scenes.length})</div>
+      <div class="scenes-list">${scenes.map((s, i) => `
+        <div class="scene-card">
+          <div class="scene-body">
+            <div class="scene-num">Scene ${i + 1}${s.duration != null ? ` · ${s.duration}s` : ''}</div>
+            <label class="edit-label">Voiceover</label>
+            <textarea class="edit-textarea" id="edit-scene-${i}-voiceover" rows="3">${escHtml(s.voiceover || '')}</textarea>
+            <label class="edit-label" style="margin-top:.5rem">Image Prompt</label>
+            <textarea class="edit-textarea" id="edit-scene-${i}-image_prompt" rows="2">${escHtml(s.image_prompt || '')}</textarea>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  $('dp-body').innerHTML = body;
+}
+
+async function saveProjectEdits(id) {
+  if (!_detailData) return;
+  const title = ($('edit-title')?.value ?? '').trim() || _detailData.title;
+  const tagsRaw = $('edit-tags')?.value ?? '';
+  const tags = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
+
+  // Start from existing metadata so we don't lose fields we don't edit (e.g. paths)
+  const meta = { ..._detailData.metadata };
+
+  const numericKeys = ['duration', 'word_count'];
+  const inputKeys   = ['narrator', 'duration', 'word_count'];
+  for (const key of inputKeys) {
+    const el = $(`edit-meta-${key}`);
+    if (!el) continue;
+    const raw = el.value.trim();
+    if (raw === '') { delete meta[key]; }
+    else { meta[key] = numericKeys.includes(key) ? parseFloat(raw) : raw; }
+  }
+  for (const key of ['summary', 'transcript', 'music', 'visual_guide']) {
+    const el = $(`edit-meta-${key}`);
+    if (!el) continue;
+    const raw = el.value.trim();
+    if (raw === '') { delete meta[key]; } else { meta[key] = raw; }
+  }
+
+  // Update scenes
+  const scenes = (meta.scenes || []).map((s, i) => {
+    const voEl = $(`edit-scene-${i}-voiceover`);
+    const ipEl = $(`edit-scene-${i}-image_prompt`);
+    return {
+      ...s,
+      voiceover:    voEl ? voEl.value : s.voiceover,
+      image_prompt: ipEl ? ipEl.value : s.image_prompt,
+    };
+  });
+  if (scenes.length) meta.scenes = scenes;
+
+  try {
+    const updated = await api('PATCH', `/projects/${id}`, { title, tags, metadata: meta });
+    toast('Saved', 'success');
+    renderDetail(updated);
+    loadProjects();
+    loadDashboard();
+  } catch (e) {
+    toast('Save failed: ' + e.message, 'error');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════

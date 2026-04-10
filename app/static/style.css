@@ -476,5 +476,53 @@ tbody td { padding: .65rem .75rem; vertical-align: middle; }
 #toast.error   { border-color: var(--danger);  color: var(--danger); }
 #toast.success { border-color: var(--success); color: var(--success); }
 
+.btn-sm.edit { border-color: var(--muted); color: var(--muted); }
+.btn-sm.edit:hover { border-color: var(--primary); color: var(--primary); background: rgba(59,130,246,.08); }
+.btn-sm.save { border-color: var(--success); color: var(--success); }
+.btn-sm.save:hover { background: var(--success); color: #fff; }
+
+/* ── Edit-mode form controls ── */
+.edit-title-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--primary);
+  color: var(--text);
+  border-radius: 6px;
+  padding: .3rem .55rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  outline: none;
+}
+.edit-fields { display: flex; flex-direction: column; gap: .65rem; }
+.edit-field  { display: flex; flex-direction: column; gap: .25rem; }
+.edit-label  { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+.edit-input  {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: .35rem .6rem;
+  font-size: .875rem;
+  outline: none;
+  transition: border-color .15s;
+  width: 100%;
+}
+.edit-input:focus  { border-color: var(--primary); }
+.edit-textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: .4rem .6rem;
+  font-size: .875rem;
+  outline: none;
+  resize: vertical;
+  transition: border-color .15s;
+  width: 100%;
+  font-family: inherit;
+  line-height: 1.5;
+}
+.edit-textarea:focus { border-color: var(--primary); }
+
 .text-muted { color: var(--muted); }
 @media (max-width: 700px) { .grid-5 { grid-template-columns: 1fr 1fr; } }
