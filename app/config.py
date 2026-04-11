@@ -75,6 +75,12 @@ class ServerConfig:
 
 
 @dataclass
+class YouTubeConfig:
+    firefox_profile: str = ""       # absolute or relative path to a Firefox profile directory
+    visibility: str = "unlisted"    # public | unlisted | private
+
+
+@dataclass
 class AppConfig:
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     temp_dir: str = "./temp"
@@ -85,6 +91,7 @@ class AppConfig:
     kittentts: KittenTTSConfig = field(default_factory=KittenTTSConfig)
     video: VideoConfig = field(default_factory=VideoConfig)
     server: ServerConfig = field(default_factory=ServerConfig)
+    youtube: YouTubeConfig = field(default_factory=YouTubeConfig)
 
 
 def _build_config(data: dict) -> AppConfig:
@@ -131,6 +138,9 @@ def _build_config(data: dict) -> AppConfig:
 
     if "server" in data:
         cfg.server = ServerConfig(**data["server"])
+
+    if "youtube" in data:
+        cfg.youtube = YouTubeConfig(**data["youtube"])
 
     return cfg
 

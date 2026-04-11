@@ -8,6 +8,7 @@ from .image import run_image_stage
 from .render import run_render_stage
 from .text import run_text_stage
 from .tts import run_tts_stage
+from .upload import run_upload_stage
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +17,7 @@ async def run_full_pipeline(project_id: str) -> None:
     """Run all stages sequentially for a single approved project."""
     log.info("full_pipeline start project=%s", project_id)
 
-    for stage in (run_text_stage, run_tts_stage, run_image_stage, run_render_stage):
+    for stage in (run_text_stage, run_tts_stage, run_image_stage, run_render_stage, run_upload_stage):
         await stage(project_id)
         project = await _load_project(project_id)
         if project is None or project.status == "failed":

@@ -18,6 +18,7 @@ from .image import run_all_scene_images, run_image_stage, run_scene_image
 from .render import run_render_stage
 from .text import run_text_stage
 from .tts import rerun_music, run_all_scene_tts, run_music_stage, run_scene_tts, run_tts_stage
+from .upload import run_upload_stage
 
 __all__ = [
     "run_text_stage",
@@ -31,4 +32,5 @@ __all__ = [
     "run_all_scene_images",
     "run_render_stage",
     "run_full_pipeline",
+    "run_upload_stage",
 ]

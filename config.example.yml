@@ -43,3 +43,10 @@ video:
 server:
   host: 0.0.0.0
   port: 8000
+
+youtube:
+  # Path to a Firefox profile directory that is already logged in to YouTube.
+  # Leave empty to use a fresh (unauthenticated) profile.
+  firefox_profile: "C:\\Users\\Ngoc\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\xxxxxxxx.Profile 1"
+  # Visibility for uploaded videos: public | unlisted | private
+  visibility: unlisted

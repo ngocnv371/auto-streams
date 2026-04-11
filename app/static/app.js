@@ -357,6 +357,20 @@ async function reRender(id) {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+async function uploadToYouTube(id) {
+  const btn = document.querySelector(`[id="upload-btn-${id}"]`);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Uploading…'; }
+  try {
+    await api('POST', `/projects/${id}/upload`);
+    toast('Upload to YouTube started', 'success');
+    loadProjects(); loadDashboard();
+    if (_detailId === id) openDetail(id);
+  } catch (e) {
+    toast(e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '⬆ Upload to YouTube'; }
+  }
+}
+
 async function rerunSceneImage(id, sceneIndex, btn) {
   btn.disabled = true; btn.textContent = '…';
   try {
@@ -466,6 +480,7 @@ function renderDetail(p) {
   if (['idea','approved'].includes(p.status)) actions += `<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`;
   if (p.status === 'approved') actions += `<button class="btn-sm run" id="run-btn-${p.id}" onclick="runPipeline('${p.id}')">▶ Run Pipeline</button>`;
   if (['failed','images_ready','clips_ready'].includes(p.status)) actions += `<button class="btn-sm rerender" onclick="reRender('${p.id}')">↺ Re-render</button>`;
+  if (p.status === 'done') actions += `<button class="btn-sm upload" id="upload-btn-${p.id}" onclick="uploadToYouTube('${p.id}')">⬆ Upload to YouTube</button>`;
   const allStatuses = ['idea','approved','content_ready','scenes_ready','audio_ready','images_ready','clips_ready','done','uploaded','failed'];
   actions += `<select class="select-filter status-jump" onchange="setProjectStatus('${p.id}', this.value)" title="Set status">${allStatuses.map(s=>`<option value="${s}"${s===p.status?' selected':''}>${s.replace(/_/g,' ')}</option>`).join('')}</select>`;
   actions += `<button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>`;
@@ -505,7 +520,7 @@ function renderDetail(p) {
         </div>`).join('')}
       </div></div>`;
   }
-  const mediaLinks = [['Music',meta.music_url],['Narration',meta.audio_url],['Video',meta.video_url],['Thumbnail',meta.thumbnail_url]].filter(([,v])=>v);
+  const mediaLinks = [['Music',meta.music_url],['Narration',meta.audio_url],['Video',meta.video_url],['Thumbnail',meta.thumbnail_url],['YouTube Short',meta.youtube_url]].filter(([,v])=>v);
   if (mediaLinks.length) {
     body += `<div class="detail-section">
       <div class="detail-section-title">Media</div>

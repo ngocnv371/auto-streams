@@ -22,6 +22,7 @@ from app.services.pipeline import (
     run_scene_tts,
     run_all_scene_tts,
     rerun_music,
+    run_upload_stage,
 )
 
 router = APIRouter()
@@ -194,6 +195,16 @@ async def rerun_scene_audio(
     return project.to_dict()
 
 
+@router.post("/{project_id}/upload", response_model=ProjectOut)
+async def upload_project(project_id: str, session: Session, background_tasks: BackgroundTasks):
+    """Upload the finished video to YouTube Shorts. Project must be in 'done' status."""
+    project = await _get_or_404(session, project_id)
+    if project.status != "done":
+        raise HTTPException(400, "Only 'done' projects can be uploaded")
+    background_tasks.add_task(_process_upload, project_id)
+    return project.to_dict()
+
+
 @router.post("/{project_id}/rerun/music", response_model=ProjectOut)
 async def rerun_music_endpoint(project_id: str, session: Session, background_tasks: BackgroundTasks):
     """Re-generate the background music track without touching any other assets."""
@@ -310,3 +321,7 @@ async def _process_all_scene_images(project_id: str) -> None:
 
 async def _process_all_scene_tts(project_id: str) -> None:
     await run_all_scene_tts(project_id)
+
+
+async def _process_upload(project_id: str) -> None:
+    await run_upload_stage(project_id)
