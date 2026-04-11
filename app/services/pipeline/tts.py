@@ -210,6 +210,58 @@ async def run_scene_tts(project_id: str, scene_index: int) -> None:
         log.exception("scene_tts failed project=%s scene=%d", project_id, scene_index)
 
 
+async def run_all_scene_tts(project_id: str) -> None:
+    """Re-generate TTS audio for every scene without changing project status."""
+    log.info("all_scene_tts start project=%s", project_id)
+    try:
+        project = await _load_project(project_id)
+        if project is None:
+            log.warning("all_scene_tts: project %s not found", project_id)
+            return
+
+        meta = project.get_metadata()
+        scenes = meta.get("scenes", [])
+        if not scenes:
+            log.warning("all_scene_tts: project %s has no scenes", project_id)
+            return
+
+        out_dir = _project_dir(project_id)
+        svc = GenerationService()
+        updated_scenes = list(scenes)
+
+        for i, scene in enumerate(scenes):
+            voiceover = scene.get("voiceover", "").strip()
+            if not voiceover:
+                log.debug("all_scene_tts: scene %d/%d skipped (no voiceover)", i + 1, len(scenes))
+                continue
+            log.debug("all_scene_tts: scene %d/%d  voiceover=%r", i + 1, len(scenes), voiceover[:80])
+            t_tts = time.monotonic()
+            audio_bytes = await asyncio.to_thread(svc.generate_speech, voiceover)
+            audio_path = os.path.join(out_dir, f"scene_{i:03d}_tts.wav")
+            with open(audio_path, "wb") as f:
+                f.write(audio_bytes)
+            real_duration = _audio_duration(audio_path, float(scene.get("duration") or 5))
+            log.info(
+                "all_scene_tts: scene %d/%d done  size=%s  elapsed=%s  duration=%.2fs",
+                i + 1, len(scenes), _kb(len(audio_bytes)), _elapsed(t_tts), real_duration,
+            )
+            updated_scenes[i] = {**updated_scenes[i], "audio_path": audio_path, "duration": real_duration}
+
+        factory = get_session_factory()
+        async with factory() as session:
+            p = await session.get(Project, project_id)
+            m = p.get_metadata()
+            m["scenes"] = updated_scenes
+            p.set_metadata(m)
+            p.touch()
+            await session.commit()
+
+        log.info("all_scene_tts done project=%s", project_id)
+
+    except Exception:
+        log.exception("all_scene_tts failed project=%s", project_id)
+
+
 async def rerun_music(project_id: str) -> None:
     """Re-generate background music for a project regardless of its current status."""
     log.info("rerun_music start project=%s", project_id)

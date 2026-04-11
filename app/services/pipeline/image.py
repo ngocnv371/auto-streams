@@ -124,3 +124,53 @@ async def run_scene_image(project_id: str, scene_index: int) -> None:
 
     except Exception:
         log.exception("scene_image failed project=%s scene=%d", project_id, scene_index)
+
+
+async def run_all_scene_images(project_id: str) -> None:
+    """Re-generate images for every scene without changing project status."""
+    log.info("all_scene_images start project=%s", project_id)
+    try:
+        project = await _load_project(project_id)
+        if project is None:
+            log.warning("all_scene_images: project %s not found", project_id)
+            return
+
+        meta = project.get_metadata()
+        scenes = meta.get("scenes", [])
+        if not scenes:
+            log.warning("all_scene_images: project %s has no scenes", project_id)
+            return
+
+        visual_guide = meta.get("visual_guide", "")
+        out_dir = _project_dir(project_id)
+        svc = GenerationService()
+        updated_scenes = list(scenes)
+
+        for i, scene in enumerate(scenes):
+            base_prompt = scene.get("image_prompt") or f"Cinematic scene: {scene.get('voiceover', '')}"
+            prompt = f"{base_prompt}. Style: {visual_guide}" if visual_guide else base_prompt
+            log.debug("all_scene_images: scene %d/%d  prompt=%r", i + 1, len(scenes), prompt[:120])
+            t_img = time.monotonic()
+            image_bytes = await asyncio.to_thread(svc.generate_image, prompt)
+            image_path = os.path.join(out_dir, f"scene_{i:03d}_image.png")
+            with open(image_path, "wb") as f:
+                f.write(image_bytes)
+            log.info(
+                "all_scene_images: scene %d/%d done  size=%s  elapsed=%s",
+                i + 1, len(scenes), _kb(len(image_bytes)), _elapsed(t_img),
+            )
+            updated_scenes[i] = {**updated_scenes[i], "image_path": image_path}
+
+        factory = get_session_factory()
+        async with factory() as session:
+            p = await session.get(Project, project_id)
+            m = p.get_metadata()
+            m["scenes"] = updated_scenes
+            p.set_metadata(m)
+            p.touch()
+            await session.commit()
+
+        log.info("all_scene_images done project=%s", project_id)
+
+    except Exception:
+        log.exception("all_scene_images failed project=%s", project_id)

@@ -392,6 +392,32 @@ async function rerunMusic(id, btn) {
     btn.disabled = false; btn.textContent = '↺ Regenerate Music';
   }
 }
+
+async function rerunAllImages(id, btn) {
+  if (!confirm('Regenerate ALL scene images? This will overwrite every existing image.')) return;
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    await api('POST', `/projects/${id}/rerun/images`);
+    toast('All images queued for regeneration', 'success');
+    setTimeout(() => openDetail(id), 800);
+  } catch (e) {
+    toast(e.message, 'error');
+    btn.disabled = false; btn.textContent = '↺ All Images';
+  }
+}
+
+async function rerunAllAudio(id, btn) {
+  if (!confirm('Regenerate ALL scene audio? This will overwrite every existing TTS file.')) return;
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    await api('POST', `/projects/${id}/rerun/audio`);
+    toast('All audio queued for regeneration', 'success');
+    setTimeout(() => openDetail(id), 800);
+  } catch (e) {
+    toast(e.message, 'error');
+    btn.disabled = false; btn.textContent = '↺ All Audio';
+  }
+}
 async function setProjectStatus(id, status) {
   try {
     await api('PUT', `/projects/${id}/status`, { status });
@@ -491,7 +517,13 @@ function renderDetail(p) {
   const hasScenes = scenes.length > 0 && (scenes[0].audio_path || scenes[0].image_path);
   if (scenes.length) {
     body += `<div class="detail-section">
-      <div class="detail-section-title">Scenes (${scenes.length})</div>
+      <div class="detail-section-title-row">
+        <span class="detail-section-title">Scenes (${scenes.length})</span>
+        <span class="section-title-actions">
+          <button class="btn-sm rerun-asset" onclick="rerunAllImages('${p.id}',this)">↺ All Images</button>
+          <button class="btn-sm rerun-asset" onclick="rerunAllAudio('${p.id}',this)">↺ All Audio</button>
+        </span>
+      </div>
       <div class="scenes-list">${scenes.map((s,i)=>{
         const assets=[s.audio_url&&'Audio',s.image_url&&'Image',s.clip_url&&'Clip'].filter(Boolean);
         const audioFile = fnFromPath(s.audio_path);

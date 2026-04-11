@@ -14,7 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_session
 from app.models import Project, Topic
 from app.schemas import ProjectCreate, ProjectOut, ProjectStatusUpdate, ProjectUpdate
-from app.services.pipeline import run_full_pipeline, run_render_stage, run_scene_image, run_scene_tts, rerun_music
+from app.services.pipeline import (
+    run_full_pipeline,
+    run_render_stage,
+    run_scene_image,
+    run_all_scene_images,
+    run_scene_tts,
+    run_all_scene_tts,
+    rerun_music,
+)
 
 router = APIRouter()
 
@@ -197,6 +205,28 @@ async def rerun_music_endpoint(project_id: str, session: Session, background_tas
     return project.to_dict()
 
 
+@router.post("/{project_id}/rerun/images", response_model=ProjectOut)
+async def rerun_all_images(project_id: str, session: Session, background_tasks: BackgroundTasks):
+    """Re-generate images for all scenes without changing project status."""
+    project = await _get_or_404(session, project_id)
+    meta = project.get_metadata()
+    if not meta.get("scenes"):
+        raise HTTPException(400, "Project has no scenes yet — run the pipeline first")
+    background_tasks.add_task(_process_all_scene_images, project_id)
+    return project.to_dict()
+
+
+@router.post("/{project_id}/rerun/audio", response_model=ProjectOut)
+async def rerun_all_audio(project_id: str, session: Session, background_tasks: BackgroundTasks):
+    """Re-generate TTS audio for all scenes without changing project status."""
+    project = await _get_or_404(session, project_id)
+    meta = project.get_metadata()
+    if not meta.get("scenes"):
+        raise HTTPException(400, "Project has no scenes yet — run the pipeline first")
+    background_tasks.add_task(_process_all_scene_tts, project_id)
+    return project.to_dict()
+
+
 @router.get("/{project_id}/audio/{filename}", include_in_schema=False)
 async def serve_audio(project_id: str, filename: str, session: Session):
     """Stream a generated audio file (TTS scene or music) for in-browser preview."""
@@ -272,3 +302,11 @@ async def _process_scene_tts(project_id: str, scene_index: int) -> None:
 
 async def _process_rerun_music(project_id: str) -> None:
     await rerun_music(project_id)
+
+
+async def _process_all_scene_images(project_id: str) -> None:
+    await run_all_scene_images(project_id)
+
+
+async def _process_all_scene_tts(project_id: str) -> None:
+    await run_all_scene_tts(project_id)

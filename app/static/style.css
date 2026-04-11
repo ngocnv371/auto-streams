@@ -441,6 +441,9 @@ tbody td { padding: .65rem .75rem; vertical-align: middle; }
 .detail-actions .status-jump { padding: .3rem .5rem; font-size: .8rem; height: 2rem; }
 .detail-section { margin-bottom: 1.25rem; }
 .detail-section-title { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin-bottom: .6rem; }
+.detail-section-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: .6rem; }
+.detail-section-title-row .detail-section-title { margin-bottom: 0; }
+.section-title-actions { display: flex; gap: .35rem; }
 .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
 .meta-item { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: .5rem .75rem; }
 .meta-key { font-size: .7rem; color: var(--muted); margin-bottom: .15rem; }
