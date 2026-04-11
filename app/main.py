@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import load_config
 from app.database import init_db
+from app.events import subscribe, unsubscribe
 from app.routers import dashboard, projects
 from app.routers import topics, ideas
 
@@ -40,3 +42,28 @@ app.include_router(ideas.router, prefix="/api/ideas", tags=["ideas"])
 @app.get("/", include_in_schema=False)
 async def serve_ui():
     return FileResponse(os.path.join(_static_dir, "index.html"))
+
+
+@app.get("/api/events", include_in_schema=False)
+async def sse_events(request: Request):
+    """Server-Sent Events stream for real-time pipeline feedback."""
+    q = subscribe()
+
+    async def generator():
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    payload = await asyncio.wait_for(q.get(), timeout=15.0)
+                    yield f"data: {payload}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+        finally:
+            unsubscribe(q)
+
+    return StreamingResponse(
+        generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

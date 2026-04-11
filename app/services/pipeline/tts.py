@@ -16,6 +16,7 @@ from app.services.generation.service import GenerationService
 from ._helpers import (
     _audio_duration,
     _elapsed,
+    _emit,
     _fail_project,
     _kb,
     _load_project,
@@ -27,7 +28,10 @@ log = logging.getLogger(__name__)
 
 async def run_tts_stage(project_id: str) -> None:
     """Generate TTS audio per scene and background music, then advance to audio_ready."""
+    from app.events import inc_active, dec_active, emit as _emit_event
     log.info("tts_stage start project=%s", project_id)
+    inc_active()
+    _emit("TTS stage started", project_id=project_id, stage="tts")
     try:
         project = await _load_project(project_id)
         if project is None or project.status != "scenes_ready":
@@ -70,6 +74,7 @@ async def run_tts_stage(project_id: str) -> None:
                     "tts_stage: scene %d/%d done  size=%s  elapsed=%s  duration=%.2fs  path=%s",
                     i + 1, len(scenes), _kb(len(audio_bytes)), _elapsed(t_tts), real_duration, audio_path,
                 )
+                _emit(f"Audio: scene {i + 1}/{len(scenes)} done", level="success", project_id=project_id, stage="tts")
                 updated_scenes.append({**scene, "audio_path": audio_path, "duration": real_duration})
             else:
                 log.debug("tts_stage: scene %d/%d skipped (no voiceover)", i + 1, len(scenes))
@@ -105,15 +110,22 @@ async def run_tts_stage(project_id: str) -> None:
             await session.commit()
 
         log.info("tts_stage done project=%s", project_id)
+        _emit("TTS stage complete", level="success", project_id=project_id, stage="tts")
+        _emit_event("project_update", project_id=project_id, status="audio_ready")
 
     except Exception:
         log.exception("tts_stage failed project=%s", project_id)
         await _fail_project(project_id, "tts_stage failed — see server logs")
+    finally:
+        dec_active()
 
 
 async def run_music_stage(project_id: str) -> None:
     """Re-generate (or generate standalone) background music without advancing status."""
+    from app.events import inc_active, dec_active
     log.info("music_stage start project=%s", project_id)
+    inc_active()
+    _emit("Music generation started", project_id=project_id, stage="music")
     try:
         project = await _load_project(project_id)
         if project is None or project.status != "scenes_ready":
@@ -149,15 +161,21 @@ async def run_music_stage(project_id: str) -> None:
             await session.commit()
 
         log.info("music_stage done project=%s", project_id)
+        _emit("Music ready", level="success", project_id=project_id, stage="music")
 
     except Exception:
         log.exception("music_stage failed project=%s", project_id)
         await _fail_project(project_id, "music_stage failed — see server logs")
+    finally:
+        dec_active()
 
 
 async def run_scene_tts(project_id: str, scene_index: int) -> None:
     """Re-generate TTS audio for a single scene without changing project status."""
+    from app.events import inc_active, dec_active
     log.info("scene_tts start project=%s scene=%d", project_id, scene_index)
+    inc_active()
+    _emit(f"Re-generating audio for scene {scene_index + 1}", project_id=project_id, stage="tts")
     try:
         project = await _load_project(project_id)
         if project is None:
@@ -205,14 +223,23 @@ async def run_scene_tts(project_id: str, scene_index: int) -> None:
             await session.commit()
 
         log.info("scene_tts done project=%s scene=%d", project_id, scene_index)
+        _emit(f"Scene {scene_index + 1} audio ready", level="success", project_id=project_id, stage="tts")
+        from app.events import emit as _emit_event
+        _emit_event("project_update", project_id=project_id, status=None)
 
     except Exception:
         log.exception("scene_tts failed project=%s scene=%d", project_id, scene_index)
+        _emit(f"Scene {scene_index + 1} audio failed", level="error", project_id=project_id, stage="tts")
+    finally:
+        dec_active()
 
 
 async def run_all_scene_tts(project_id: str) -> None:
     """Re-generate TTS audio for every scene without changing project status."""
+    from app.events import inc_active, dec_active
     log.info("all_scene_tts start project=%s", project_id)
+    inc_active()
+    _emit("Re-generating all audio", project_id=project_id, stage="tts")
     try:
         project = await _load_project(project_id)
         if project is None:
@@ -257,14 +284,23 @@ async def run_all_scene_tts(project_id: str) -> None:
             await session.commit()
 
         log.info("all_scene_tts done project=%s", project_id)
+        _emit("All scene audio ready", level="success", project_id=project_id, stage="tts")
+        from app.events import emit as _emit_event
+        _emit_event("project_update", project_id=project_id, status=None)
 
     except Exception:
         log.exception("all_scene_tts failed project=%s", project_id)
+        _emit("All audio re-gen failed", level="error", project_id=project_id, stage="tts")
+    finally:
+        dec_active()
 
 
 async def rerun_music(project_id: str) -> None:
     """Re-generate background music for a project regardless of its current status."""
+    from app.events import inc_active, dec_active
     log.info("rerun_music start project=%s", project_id)
+    inc_active()
+    _emit("Re-generating music", project_id=project_id, stage="music")
     try:
         project = await _load_project(project_id)
         if project is None:
@@ -305,6 +341,12 @@ async def rerun_music(project_id: str) -> None:
             await session.commit()
 
         log.info("rerun_music done project=%s", project_id)
+        _emit("Music regenerated", level="success", project_id=project_id, stage="music")
+        from app.events import emit as _emit_event
+        _emit_event("project_update", project_id=project_id, status=None)
 
     except Exception:
         log.exception("rerun_music failed project=%s", project_id)
+        _emit("Music re-gen failed", level="error", project_id=project_id, stage="music")
+    finally:
+        dec_active()

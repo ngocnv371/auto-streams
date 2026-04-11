@@ -14,6 +14,7 @@ from app.models import Project
 from ._helpers import (
     _audio_duration,
     _elapsed,
+    _emit,
     _fail_project,
     _load_project,
     _project_dir,
@@ -139,7 +140,10 @@ def _mix_music(video_path: str, music_path: str, out_path: str) -> None:
 
 async def run_render_stage(project_id: str) -> None:
     """Render per-scene clips then assemble the final video. images_ready / clips_ready → done."""
+    from app.events import inc_active, dec_active, emit as _emit_event
     log.info("render_stage start project=%s", project_id)
+    inc_active()
+    _emit("Render stage started", project_id=project_id, stage="render")
     try:
         project = await _load_project(project_id)
         if project is None or project.status not in ("images_ready", "clips_ready"):
@@ -168,6 +172,7 @@ async def run_render_stage(project_id: str) -> None:
                     "render_stage: clip %d/%d done  elapsed=%s  path=%s",
                     i + 1, len(scenes), _elapsed(t_clip), clip_path,
                 )
+                _emit(f"Render: clip {i + 1}/{len(scenes)} done", level="success", project_id=project_id, stage="render")
             clip_paths.append(clip_path)
             updated_scenes.append({**scene, "clip_path": clip_path})
 
@@ -211,7 +216,11 @@ async def run_render_stage(project_id: str) -> None:
             await session.commit()
 
         log.info("render_stage done project=%s final=%s", project_id, final_path)
+        _emit("Render complete", level="success", project_id=project_id, stage="render")
+        _emit_event("project_update", project_id=project_id, status="done")
 
     except Exception:
         log.exception("render_stage failed project=%s", project_id)
         await _fail_project(project_id, "render_stage failed — see server logs")
+    finally:
+        dec_active()

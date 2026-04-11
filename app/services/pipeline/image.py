@@ -13,6 +13,7 @@ from app.services.generation.service import GenerationService
 
 from ._helpers import (
     _elapsed,
+    _emit,
     _fail_project,
     _kb,
     _load_project,
@@ -24,7 +25,10 @@ log = logging.getLogger(__name__)
 
 async def run_image_stage(project_id: str) -> None:
     """Generate one image per scene."""
+    from app.events import inc_active, dec_active, emit as _emit_event
     log.info("image_stage start project=%s", project_id)
+    inc_active()
+    _emit("Image stage started", project_id=project_id, stage="image")
     try:
         project = await _load_project(project_id)
         if project is None or project.status != "audio_ready":
@@ -58,6 +62,7 @@ async def run_image_stage(project_id: str) -> None:
                 "image_stage: scene %d/%d done  size=%s  elapsed=%s  path=%s",
                 i + 1, len(scenes), _kb(len(image_bytes)), _elapsed(t_img), image_path,
             )
+            _emit(f"Image: scene {i + 1}/{len(scenes)} done", level="success", project_id=project_id, stage="image")
             updated_scenes.append({**scene, "image_path": image_path})
 
         factory = get_session_factory()
@@ -71,15 +76,22 @@ async def run_image_stage(project_id: str) -> None:
             await session.commit()
 
         log.info("image_stage done project=%s", project_id)
+        _emit("Images complete", level="success", project_id=project_id, stage="image")
+        _emit_event("project_update", project_id=project_id, status="images_ready")
 
     except Exception:
         log.exception("image_stage failed project=%s", project_id)
         await _fail_project(project_id, "image_stage failed — see server logs")
+    finally:
+        dec_active()
 
 
 async def run_scene_image(project_id: str, scene_index: int) -> None:
     """Re-generate the image for a single scene without changing project status."""
+    from app.events import inc_active, dec_active, emit as _emit_event
     log.info("scene_image start project=%s scene=%d", project_id, scene_index)
+    inc_active()
+    _emit(f"Re-generating image for scene {scene_index + 1}", project_id=project_id, stage="image")
     try:
         project = await _load_project(project_id)
         if project is None:
@@ -121,14 +133,22 @@ async def run_scene_image(project_id: str, scene_index: int) -> None:
             await session.commit()
 
         log.info("scene_image done project=%s scene=%d", project_id, scene_index)
+        _emit(f"Scene {scene_index + 1} image ready", level="success", project_id=project_id, stage="image")
+        _emit_event("project_update", project_id=project_id, status=None)
 
     except Exception:
         log.exception("scene_image failed project=%s scene=%d", project_id, scene_index)
+        _emit(f"Scene {scene_index + 1} image failed", level="error", project_id=project_id, stage="image")
+    finally:
+        dec_active()
 
 
 async def run_all_scene_images(project_id: str) -> None:
     """Re-generate images for every scene without changing project status."""
+    from app.events import inc_active, dec_active, emit as _emit_event
     log.info("all_scene_images start project=%s", project_id)
+    inc_active()
+    _emit("Re-generating all images", project_id=project_id, stage="image")
     try:
         project = await _load_project(project_id)
         if project is None:
@@ -159,6 +179,7 @@ async def run_all_scene_images(project_id: str) -> None:
                 "all_scene_images: scene %d/%d done  size=%s  elapsed=%s",
                 i + 1, len(scenes), _kb(len(image_bytes)), _elapsed(t_img),
             )
+            _emit(f"Image: scene {i + 1}/{len(scenes)} done", level="success", project_id=project_id, stage="image")
             updated_scenes[i] = {**updated_scenes[i], "image_path": image_path}
 
         factory = get_session_factory()
@@ -171,6 +192,11 @@ async def run_all_scene_images(project_id: str) -> None:
             await session.commit()
 
         log.info("all_scene_images done project=%s", project_id)
+        _emit("All images ready", level="success", project_id=project_id, stage="image")
+        _emit_event("project_update", project_id=project_id, status=None)
 
     except Exception:
         log.exception("all_scene_images failed project=%s", project_id)
+        _emit("All images re-gen failed", level="error", project_id=project_id, stage="image")
+    finally:
+        dec_active()

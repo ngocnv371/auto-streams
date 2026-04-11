@@ -12,6 +12,7 @@ from app.services.generation.service import GenerationService
 
 from ._helpers import (
     _SCENE_SYSTEM_PROMPT,
+    _emit,
     _fail_project,
     _load_project,
     _parse_json_response,
@@ -22,7 +23,10 @@ log = logging.getLogger(__name__)
 
 async def run_text_stage(project_id: str) -> None:
     """Use an LLM to generate the full script + scene breakdown."""
+    from app.events import inc_active, dec_active
     log.info("text_stage start project=%s", project_id)
+    inc_active()
+    _emit("Generating script…", project_id=project_id, stage="text")
     try:
         project = await _load_project(project_id)
         if project is None:
@@ -122,7 +126,12 @@ async def run_text_stage(project_id: str) -> None:
             await session.commit()
 
         log.info("text_stage done project=%s scenes=%d", project_id, len(scenes))
+        _emit(f"Script ready — {len(scenes)} scenes", level="success", project_id=project_id, stage="text")
+        from app.events import emit
+        emit("project_update", project_id=project_id, status="scenes_ready")
 
     except Exception:
         log.exception("text_stage failed project=%s", project_id)
         await _fail_project(project_id, "text_stage failed — see server logs")
+    finally:
+        dec_active()

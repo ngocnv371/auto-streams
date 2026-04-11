@@ -32,6 +32,10 @@
     <button class="nav-tab" id="tab-projects" onclick="showPage('projects', this)">Projects</button>
   </div>
   <div class="nav-spacer"></div>
+  <div class="sse-indicator" id="sse-indicator" title="Pipeline status">
+    <div class="sse-dot idle" id="sse-dot"></div>
+    <span class="sse-label" id="sse-label">idle</span>
+  </div>
   <button class="btn-generate" id="btn-generate" disabled onclick="openGenerateModal()">Generate Ideas</button>
 </nav>
 
@@ -57,6 +61,8 @@
     <div class="pipeline" id="pipeline-steps"></div>
     <h2>Batch Queues</h2>
     <div class="grid-5" id="queue-grid"></div>
+    <h2>Activity</h2>
+    <div class="activity-log" id="activity-log"><div class="activity-empty">Waiting for activity…</div></div>
   </div>
 
   <div id="page-projects" class="page">

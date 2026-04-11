@@ -11,6 +11,7 @@ import time
 from app.config import get_config
 from app.database import get_session_factory
 from app.models import Project
+from app.events import emit, inc_active, dec_active
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +53,14 @@ async def _load_project(project_id: str) -> Project | None:
         return await session.get(Project, project_id)
 
 
+def _emit(msg: str, level: str = "info", project_id: str | None = None, **extra) -> None:
+    """Emit a pipeline activity event (best-effort)."""
+    kw: dict = {"msg": msg, "level": level, **extra}
+    if project_id:
+        kw["project_id"] = project_id
+    emit("activity", **kw)
+
+
 async def _fail_project(project_id: str, error: str) -> None:
     factory = get_session_factory()
     async with factory() as session:
@@ -64,6 +73,8 @@ async def _fail_project(project_id: str, error: str) -> None:
         p.set_metadata(m)
         p.touch()
         await session.commit()
+    _emit(f"Failed: {error}", level="error", project_id=project_id)
+    emit("project_update", project_id=project_id, status="failed")
 
 
 # ── Audio helper (used by tts + render stages) ───────────────────────────────

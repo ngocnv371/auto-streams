@@ -1,4 +1,91 @@
 // ═══════════════════════════════════════════════════════════
+//  Server-Sent Events — real-time pipeline feedback
+// ═══════════════════════════════════════════════════════════
+const ACTIVITY_MAX = 60;
+let _activityLog = [];
+let _evtSource = null;
+let _sseRetryTimer = null;
+let _refreshTimer = null;
+
+function connectSSE() {
+  if (_evtSource) { _evtSource.close(); _evtSource = null; }
+  clearTimeout(_sseRetryTimer);
+  _evtSource = new EventSource('/api/events');
+
+  _evtSource.onopen = () => {
+    setNavIndicator(false, 'connected');
+  };
+
+  _evtSource.onmessage = (e) => {
+    let data;
+    try { data = JSON.parse(e.data); } catch { return; }
+
+    if (data.type === 'status') {
+      setNavIndicator(data.active > 0, data.active > 0 ? `running (${data.active})` : 'idle');
+    } else if (data.type === 'activity') {
+      pushActivity(data);
+    } else if (data.type === 'project_update') {
+      onProjectUpdate(data.project_id, data.status);
+    }
+  };
+
+  _evtSource.onerror = () => {
+    setNavIndicator(false, 'disconnected');
+    _evtSource.close();
+    _evtSource = null;
+    _sseRetryTimer = setTimeout(connectSSE, 4000);
+  };
+}
+
+function setNavIndicator(active, labelText) {
+  const dot   = $('sse-dot');
+  const label = $('sse-label');
+  if (!dot) return;
+  dot.className = 'sse-dot ' + (active ? 'running' : (labelText === 'disconnected' ? 'error' : 'idle'));
+  if (label) label.textContent = labelText || (active ? 'running' : 'idle');
+}
+
+function pushActivity(data) {
+  _activityLog.unshift({
+    ts:         data.ts ? new Date(data.ts * 1000) : new Date(),
+    msg:        data.msg    || '',
+    level:      data.level  || 'info',
+    project_id: data.project_id || null,
+    stage:      data.stage  || null,
+  });
+  if (_activityLog.length > ACTIVITY_MAX) _activityLog.length = ACTIVITY_MAX;
+  renderActivityLog();
+}
+
+function renderActivityLog() {
+  const el = $('activity-log');
+  if (!el) return;
+  if (!_activityLog.length) {
+    el.innerHTML = '<div class="activity-empty">No activity yet</div>';
+    return;
+  }
+  el.innerHTML = _activityLog.map(e => `
+    <div class="activity-entry level-${escHtml(e.level)}">
+      <span class="activity-time">${e.ts.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span>
+      <span class="activity-msg">${escHtml(e.msg)}</span>
+      ${e.project_id ? `<span class="activity-pid" title="${escHtml(e.project_id)}">${e.project_id.slice(0,8)}</span>` : ''}
+    </div>`).join('');
+}
+
+function onProjectUpdate(project_id, status) {
+  // Auto-refresh the open detail panel for this project
+  if (_detailId === project_id) {
+    openDetail(project_id);
+  }
+  // Debounce dashboard + list refresh
+  clearTimeout(_refreshTimer);
+  _refreshTimer = setTimeout(() => {
+    loadDashboard();
+    if (activePage === 'projects') loadProjects();
+  }, 600);
+}
+
+// ═══════════════════════════════════════════════════════════
 //  Utils
 // ═══════════════════════════════════════════════════════════
 const $ = id => document.getElementById(id);
@@ -707,6 +794,7 @@ document.addEventListener('keydown', e => {
 // ═══════════════════════════════════════════════════════════
 //  Init
 // ═══════════════════════════════════════════════════════════
+connectSSE();
 loadTopics().then(() => {
   if (currentTopicId) {
     switchPage('dashboard');
