@@ -20,6 +20,7 @@
   --s-images_ready:  #f472b6;
   --s-clips_ready:   #2dd4bf;
   --s-done:          #4ade80;
+  --s-uploaded:      #a3e635;
   --s-failed:        #f87171;
 }
 
@@ -343,6 +344,7 @@ tbody td { padding: .65rem .75rem; vertical-align: middle; }
 .badge-images_ready  { background: rgba(244,114,182,.15); color: var(--s-images_ready); }
 .badge-clips_ready   { background: rgba(45,212,191,.15);  color: var(--s-clips_ready); }
 .badge-done          { background: rgba(74,222,128,.15);  color: var(--s-done); }
+.badge-uploaded      { background: rgba(163,230,53,.15);   color: var(--s-uploaded); }
 .badge-failed        { background: rgba(248,113,113,.15); color: var(--s-failed); }
 
 /* ── Generate modal ── */

@@ -19,6 +19,7 @@ PROJECT_STATUSES = [
     "images_ready",
     "clips_ready",
     "done",
+    "uploaded",
     "failed",
 ]
 
