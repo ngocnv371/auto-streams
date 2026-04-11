@@ -62,6 +62,7 @@ async def run_text_stage(project_id: str) -> None:
             '  "narrator": "narrator character or tone description",\n'
             '  "music": "background music style/mood description",\n'
             '  "visual_guide": "overall visual style (colour palette, camera feel, etc.)",\n'
+            '  "tags": ["up to 5 short hashtag-style keywords relevant to the video, without the # symbol"],\n'
             '  "scenes": [\n'
             '    {\n'
             '      "voiceover": "exact words spoken in this scene",\n'
@@ -83,11 +84,14 @@ async def run_text_stage(project_id: str) -> None:
 
         transcript = str(data.get("transcript", ""))
         word_count = len(transcript.split())
+        raw_tags = data.get("tags", [])
+        tags = [str(t).strip().lstrip("#") for t in raw_tags if str(t).strip()][:5]
         log.info(
-            "text_stage: parsed ok  scenes=%d  word_count=%d  narrator=%r",
+            "text_stage: parsed ok  scenes=%d  word_count=%d  narrator=%r  tags=%r",
             len(scenes),
             word_count,
             str(data.get("narrator", ""))[:60],
+            tags,
         )
         for i, s in enumerate(scenes):
             log.debug(
@@ -104,6 +108,7 @@ async def run_text_stage(project_id: str) -> None:
             "visual_guide": str(data.get("visual_guide", "")),
             "word_count":   word_count,
             "scenes":       scenes,
+            "tags":         tags,
         }
         if existing_summary:
             meta["summary"] = existing_summary

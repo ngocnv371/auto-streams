@@ -162,14 +162,16 @@ async def run_upload_stage(project_id: str) -> None:
         if not video_path:
             raise ValueError("video_path missing from project metadata")
 
-        title: str = project.title
+        tags: list[str] = meta.get("tags", [])
+        tag_suffix = "  " + "  ".join(f"#{t}" for t in tags) if tags else ""
+        title: str = project.title + tag_suffix
         description: str = meta.get("summary", "")
         cfg = get_config()
         visibility: str = cfg.youtube.visibility
 
         log.info(
-            "upload_stage: video=%s  title=%r  visibility=%s",
-            video_path, title, visibility,
+            "upload_stage: video=%s  title=%r  tags=%r  visibility=%s",
+            video_path, title, tags, visibility,
         )
 
         t0 = time.monotonic()
