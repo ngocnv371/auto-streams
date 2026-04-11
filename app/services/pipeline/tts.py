@@ -153,3 +153,106 @@ async def run_music_stage(project_id: str) -> None:
     except Exception:
         log.exception("music_stage failed project=%s", project_id)
         await _fail_project(project_id, "music_stage failed — see server logs")
+
+
+async def run_scene_tts(project_id: str, scene_index: int) -> None:
+    """Re-generate TTS audio for a single scene without changing project status."""
+    log.info("scene_tts start project=%s scene=%d", project_id, scene_index)
+    try:
+        project = await _load_project(project_id)
+        if project is None:
+            log.warning("scene_tts: project %s not found", project_id)
+            return
+
+        meta = project.get_metadata()
+        scenes = meta.get("scenes", [])
+        if scene_index < 0 or scene_index >= len(scenes):
+            log.warning("scene_tts: scene index %d out of range (0-%d)", scene_index, len(scenes) - 1)
+            return
+
+        scene = scenes[scene_index]
+        voiceover = scene.get("voiceover", "").strip()
+        if not voiceover:
+            log.warning("scene_tts: scene %d has no voiceover text", scene_index)
+            return
+
+        out_dir = _project_dir(project_id)
+        svc = GenerationService()
+
+        log.debug("scene_tts: scene %d  voiceover=%r", scene_index, voiceover[:80])
+        t_tts = time.monotonic()
+        audio_bytes = await asyncio.to_thread(svc.generate_speech, voiceover)
+        audio_path = os.path.join(out_dir, f"scene_{scene_index:03d}_tts.wav")
+        with open(audio_path, "wb") as f:
+            f.write(audio_bytes)
+        real_duration = _audio_duration(audio_path, float(scene.get("duration") or 5))
+        log.info(
+            "scene_tts: scene %d done  size=%s  elapsed=%s  duration=%.2fs  path=%s",
+            scene_index, _kb(len(audio_bytes)), _elapsed(t_tts), real_duration, audio_path,
+        )
+
+        factory = get_session_factory()
+        async with factory() as session:
+            p = await session.get(Project, project_id)
+            m = p.get_metadata()
+            m["scenes"][scene_index] = {
+                **m["scenes"][scene_index],
+                "audio_path": audio_path,
+                "duration": real_duration,
+            }
+            p.set_metadata(m)
+            p.touch()
+            await session.commit()
+
+        log.info("scene_tts done project=%s scene=%d", project_id, scene_index)
+
+    except Exception:
+        log.exception("scene_tts failed project=%s scene=%d", project_id, scene_index)
+
+
+async def rerun_music(project_id: str) -> None:
+    """Re-generate background music for a project regardless of its current status."""
+    log.info("rerun_music start project=%s", project_id)
+    try:
+        project = await _load_project(project_id)
+        if project is None:
+            log.warning("rerun_music: project %s not found", project_id)
+            return
+
+        meta = project.get_metadata()
+        music_prompt = meta.get("music") or "calm ambient background music"
+        duration = int(
+            meta.get("duration")
+            or round(sum(s.get("duration", 0) for s in meta.get("scenes", [])))
+            or 60
+        )
+        log.info(
+            "rerun_music: generating music  prompt=%r  duration=%ds  provider=%r",
+            music_prompt[:80], duration, get_config().providers.music,
+        )
+
+        out_dir = _project_dir(project_id)
+        svc = GenerationService()
+        t_music = time.monotonic()
+        music_bytes = await asyncio.to_thread(svc.generate_music, music_prompt, duration)
+        music_path = os.path.join(out_dir, "music.wav")
+        with open(music_path, "wb") as f:
+            f.write(music_bytes)
+        log.info(
+            "rerun_music: done  size=%s  elapsed=%s  path=%s",
+            _kb(len(music_bytes)), _elapsed(t_music), music_path,
+        )
+
+        factory = get_session_factory()
+        async with factory() as session:
+            p = await session.get(Project, project_id)
+            m = p.get_metadata()
+            m["music_path"] = music_path
+            p.set_metadata(m)
+            p.touch()
+            await session.commit()
+
+        log.info("rerun_music done project=%s", project_id)
+
+    except Exception:
+        log.exception("rerun_music failed project=%s", project_id)

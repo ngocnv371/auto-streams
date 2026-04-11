@@ -356,6 +356,42 @@ async function reRender(id) {
     if (_detailId === id) openDetail(id);
   } catch (e) { toast(e.message, 'error'); }
 }
+
+async function rerunSceneImage(id, sceneIndex, btn) {
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    await api('POST', `/projects/${id}/scenes/${sceneIndex}/rerun/image`);
+    toast(`Scene ${sceneIndex + 1} image queued`, 'success');
+    setTimeout(() => openDetail(id), 800);
+  } catch (e) {
+    toast(e.message, 'error');
+    btn.disabled = false; btn.textContent = '↺ Image';
+  }
+}
+
+async function rerunSceneAudio(id, sceneIndex, btn) {
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    await api('POST', `/projects/${id}/scenes/${sceneIndex}/rerun/audio`);
+    toast(`Scene ${sceneIndex + 1} audio queued`, 'success');
+    setTimeout(() => openDetail(id), 800);
+  } catch (e) {
+    toast(e.message, 'error');
+    btn.disabled = false; btn.textContent = '↺ Audio';
+  }
+}
+
+async function rerunMusic(id, btn) {
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    await api('POST', `/projects/${id}/rerun/music`);
+    toast('Music regeneration queued', 'success');
+    setTimeout(() => openDetail(id), 800);
+  } catch (e) {
+    toast(e.message, 'error');
+    btn.disabled = false; btn.textContent = '↺ Regenerate Music';
+  }
+}
 async function setProjectStatus(id, status) {
   try {
     await api('PUT', `/projects/${id}/status`, { status });
@@ -452,6 +488,7 @@ function renderDetail(p) {
   }
   const audioBase = `/api/projects/${p.id}/audio`;
   const fnFromPath = path => path ? path.replace(/\\/g,'/').split('/').pop() : null;
+  const hasScenes = scenes.length > 0 && (scenes[0].audio_path || scenes[0].image_path);
   if (scenes.length) {
     body += `<div class="detail-section">
       <div class="detail-section-title">Scenes (${scenes.length})</div>
@@ -468,6 +505,10 @@ function renderDetail(p) {
             ${s.image_prompt?`<div class="scene-prompt">${escHtml(s.image_prompt)}</div>`:''}
             ${audioFile?`<div class="scene-audio"><audio controls preload="none" src="${audioBase}/${encodeURIComponent(audioFile)}"></audio></div>`:''}
             ${assets.length?`<div class="scene-assets">${assets.map(a=>`<span class="asset-chip">${a}</span>`).join('')}</div>`:''}
+            <div class="scene-rerun-actions">
+              ${imageFile||s.image_prompt?`<button class="btn-sm rerun-asset" onclick="rerunSceneImage('${p.id}',${i},this)">↺ Image</button>`:''}
+              ${audioFile||s.voiceover?`<button class="btn-sm rerun-asset" onclick="rerunSceneAudio('${p.id}',${i},this)">↺ Audio</button>`:''}
+            </div>
           </div>
         </div>`;
       }).join('')}</div></div>`;
@@ -477,6 +518,7 @@ function renderDetail(p) {
     body += `<div class="detail-section">
       <div class="detail-section-title">Background Music</div>
       <div class="music-audio"><audio controls preload="none" src="${audioBase}/${encodeURIComponent(musicFile)}"></audio></div>
+      <div style="margin-top:.4rem"><button class="btn-sm rerun-asset" onclick="rerunMusic('${p.id}',this)">↺ Regenerate Music</button></div>
     </div>`;
   }
   $('dp-body').innerHTML = body || '<div class="empty">No content yet.</div>';

@@ -458,6 +458,10 @@ tbody td { padding: .65rem .75rem; vertical-align: middle; }
 .asset-chip { font-size: .72rem; padding: .15rem .5rem; border-radius: 4px; background: rgba(59,130,246,.1); color: var(--primary); border: 1px solid rgba(59,130,246,.2); }
 .scene-audio { margin-top: .35rem; }
 .scene-audio audio { width: 100%; height: 28px; border-radius: 6px; accent-color: var(--primary); }
+.scene-rerun-actions { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .5rem; }
+.btn-sm.rerun-asset { border-color: var(--s-audio_ready); color: var(--s-audio_ready); }
+.btn-sm.rerun-asset:hover { background: var(--s-audio_ready); color: #fff; }
+.btn-sm.rerun-asset:disabled { opacity: .45; cursor: not-allowed; }
 .music-audio { margin-top: .5rem; }
 .music-audio-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin-bottom: .3rem; }
 .music-audio audio { width: 100%; height: 32px; border-radius: 6px; accent-color: var(--primary); }

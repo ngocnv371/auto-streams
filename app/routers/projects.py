@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_session
 from app.models import Project, Topic
 from app.schemas import ProjectCreate, ProjectOut, ProjectStatusUpdate, ProjectUpdate
-from app.services.pipeline import run_full_pipeline, run_render_stage
+from app.services.pipeline import run_full_pipeline, run_render_stage, run_scene_image, run_scene_tts, rerun_music
 
 router = APIRouter()
 
@@ -156,6 +156,47 @@ async def delete_project(project_id: str, session: Session):
     await session.commit()
 
 
+@router.post("/{project_id}/scenes/{scene_index}/rerun/image", response_model=ProjectOut)
+async def rerun_scene_image(
+    project_id: str, scene_index: int, session: Session, background_tasks: BackgroundTasks
+):
+    """Re-generate the image for a single scene without touching any other assets."""
+    project = await _get_or_404(session, project_id)
+    meta = project.get_metadata()
+    scenes = meta.get("scenes", [])
+    if not scenes or scene_index < 0 or scene_index >= len(scenes):
+        raise HTTPException(400, f"Scene index {scene_index} is out of range (0–{len(scenes)-1})")
+    background_tasks.add_task(_process_scene_image, project_id, scene_index)
+    return project.to_dict()
+
+
+@router.post("/{project_id}/scenes/{scene_index}/rerun/audio", response_model=ProjectOut)
+async def rerun_scene_audio(
+    project_id: str, scene_index: int, session: Session, background_tasks: BackgroundTasks
+):
+    """Re-generate TTS audio for a single scene without touching any other assets."""
+    project = await _get_or_404(session, project_id)
+    meta = project.get_metadata()
+    scenes = meta.get("scenes", [])
+    if not scenes or scene_index < 0 or scene_index >= len(scenes):
+        raise HTTPException(400, f"Scene index {scene_index} is out of range (0–{len(scenes)-1})")
+    if not scenes[scene_index].get("voiceover", "").strip():
+        raise HTTPException(400, f"Scene {scene_index} has no voiceover text")
+    background_tasks.add_task(_process_scene_tts, project_id, scene_index)
+    return project.to_dict()
+
+
+@router.post("/{project_id}/rerun/music", response_model=ProjectOut)
+async def rerun_music_endpoint(project_id: str, session: Session, background_tasks: BackgroundTasks):
+    """Re-generate the background music track without touching any other assets."""
+    project = await _get_or_404(session, project_id)
+    meta = project.get_metadata()
+    if not meta.get("scenes"):
+        raise HTTPException(400, "Project has no scenes yet — run the pipeline first")
+    background_tasks.add_task(_process_rerun_music, project_id)
+    return project.to_dict()
+
+
 @router.get("/{project_id}/audio/{filename}", include_in_schema=False)
 async def serve_audio(project_id: str, filename: str, session: Session):
     """Stream a generated audio file (TTS scene or music) for in-browser preview."""
@@ -219,3 +260,15 @@ async def _process_pipeline(project_id: str) -> None:
 async def _process_render(project_id: str) -> None:
     """Background task — runs only the render stage."""
     await run_render_stage(project_id)
+
+
+async def _process_scene_image(project_id: str, scene_index: int) -> None:
+    await run_scene_image(project_id, scene_index)
+
+
+async def _process_scene_tts(project_id: str, scene_index: int) -> None:
+    await run_scene_tts(project_id, scene_index)
+
+
+async def _process_rerun_music(project_id: str) -> None:
+    await rerun_music(project_id)
