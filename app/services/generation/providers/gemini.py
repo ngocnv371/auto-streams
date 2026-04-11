@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import base64
+import io
+import struct
+import wave
 
 import requests
 
@@ -89,6 +92,17 @@ class GeminiTTSProvider(TTSProvider):
 
         for part in resp.json()["candidates"][0]["content"]["parts"]:
             if "inlineData" in part:
-                return base64.b64decode(part["inlineData"]["data"])
+                pcm = base64.b64decode(part["inlineData"]["data"])
+                return self._pcm_to_wav(pcm)
 
         raise RuntimeError("Gemini TTS returned no audio data")
+
+    @staticmethod
+    def _pcm_to_wav(pcm_data: bytes, sample_rate: int = 24000, channels: int = 1, sample_width: int = 2) -> bytes:
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as wf:
+            wf.setnchannels(channels)
+            wf.setsampwidth(sample_width)
+            wf.setframerate(sample_rate)
+            wf.writeframes(pcm_data)
+        return buf.getvalue()
