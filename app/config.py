@@ -65,6 +65,7 @@ class SubtitleStyle:
 class VideoConfig:
     enableKenBurns: bool = True
     enableParticles: bool = False
+    enableSubtitles: bool = False
     subtitleStyle: SubtitleStyle = field(default_factory=SubtitleStyle)
 
 
@@ -133,6 +134,7 @@ def _build_config(data: dict) -> AppConfig:
         cfg.video = VideoConfig(
             enableKenBurns=d.get("enableKenBurns", True),
             enableParticles=d.get("enableParticles", False),
+            enableSubtitles=d.get("enableSubtitles", False),
             subtitleStyle=SubtitleStyle(**d.get("subtitleStyle", {})),
         )
 

@@ -10,6 +10,7 @@ import time
 from app.config import get_config
 from app.database import get_session_factory
 from app.models import Project
+from .render_subtitles import align_and_burn
 
 from ._helpers import (
     _audio_duration,
@@ -158,6 +159,8 @@ async def run_render_stage(project_id: str) -> None:
         music_path = meta.get("music_path")
         out_dir = _project_dir(project_id)
 
+        cfg = get_config()
+
         # ── Per-scene clips ──────────────────────────────────────────
         updated_scenes = []
         clip_paths: list[str] = []
@@ -173,6 +176,25 @@ async def run_render_stage(project_id: str) -> None:
                     i + 1, len(scenes), _elapsed(t_clip), clip_path,
                 )
                 _emit(f"Render: clip {i + 1}/{len(scenes)} done", level="success", project_id=project_id, stage="render")
+
+            # ── Subtitle burn-in (optional) ──────────────────────────
+            if cfg.video.enableSubtitles:
+                sub_path = os.path.join(out_dir, f"scene_{i:03d}_clip_sub.mp4")
+                if os.path.exists(sub_path):
+                    log.info("render_stage: subtitled clip %d/%d already exists, reusing", i + 1, len(scenes))
+                else:
+                    t_sub = time.monotonic()
+                    sub_path = await asyncio.to_thread(
+                        align_and_burn, scene, clip_path, sub_path,
+                        style=cfg.video.subtitleStyle,
+                    )
+                    log.info(
+                        "render_stage: subtitles %d/%d done  elapsed=%s  path=%s",
+                        i + 1, len(scenes), _elapsed(t_sub), sub_path,
+                    )
+                    _emit(f"Subtitles: clip {i + 1}/{len(scenes)} done", level="success", project_id=project_id, stage="render")
+                clip_path = sub_path
+
             clip_paths.append(clip_path)
             updated_scenes.append({**scene, "clip_path": clip_path})
 
