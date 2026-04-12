@@ -37,8 +37,8 @@ video:
   subtitleStyle:
     font: Arial
     fontSize: 24
-    color: white
-    stroke: black
+    color: "#FFFFFF"   # hex #RRGGBB
+    stroke: "#000000"  # hex #RRGGBB
 
 server:
   host: 0.0.0.0

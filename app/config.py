@@ -57,8 +57,8 @@ class ProvidersConfig:
 class SubtitleStyle:
     font: str = "Arial"
     fontSize: int = 24
-    color: str = "white"
-    stroke: str = "black"
+    color: str = "#FFFFFF"
+    stroke: str = "#000000"
 
 
 @dataclass
