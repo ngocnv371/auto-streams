@@ -136,13 +136,20 @@ def burn_subtitles_on_clip(
         style = SubtitleStyle()
 
     primary = _hex_to_ass_color(style.color)
-    outline = _hex_to_ass_color(style.stroke)
+    # Thin hard outline for crispness; most of the "edge" comes from the shadow.
+    outline_color = _hex_to_ass_color(style.stroke)
+    # Semi-transparent (50 %) version of the stroke color used as the drop shadow.
+    # ASS alpha: 0x00 = fully opaque, 0xFF = fully transparent.
+    shadow_color = _hex_to_ass_color(style.stroke, alpha=0x80)
     force_style = (
         f"FontName={style.font},"
         f"FontSize={style.fontSize},"
         f"PrimaryColour={primary},"
-        f"OutlineColour={outline},"
-        "Outline=2,Shadow=1,Alignment=2,MarginV=40"
+        f"OutlineColour={outline_color},"
+        f"BackColour={shadow_color},"
+        # Outline=1 keeps a thin crisp edge; Shadow=2 + Blur=2 create the
+        # soft feathered drop-shadow so the overall effect fades out gently.
+        "Outline=1,Shadow=2,Blur=2,Alignment=2,MarginV=40"
     )
 
     srt_escaped = _escape_srt_path_for_ffmpeg(srt_path)
