@@ -18,7 +18,7 @@ PROJECT_STATUSES = [
     "audio_ready",
     "images_ready",
     "clips_ready",
-    "done",
+    "rendered",
     "uploaded",
     "failed",
 ]

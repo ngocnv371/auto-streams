@@ -117,7 +117,7 @@ async def run_project_pipeline(project_id: str, session: Session, background_tas
 async def render_project(project_id: str, session: Session, background_tasks: BackgroundTasks):
     """Force a re-render stage. Accepts failed, images_ready, or clips_ready projects."""
     project = await _get_or_404(session, project_id)
-    if project.status not in ("done", "failed", "images_ready", "clips_ready"):
+    if project.status not in ("rendered", "failed", "images_ready", "clips_ready"):
         raise HTTPException(400, "Project must be in 'failed', 'images_ready', or 'clips_ready' status to re-render")
     project.status = "images_ready"
     project.touch()
@@ -197,10 +197,10 @@ async def rerun_scene_audio(
 
 @router.post("/{project_id}/upload", response_model=ProjectOut)
 async def upload_project(project_id: str, session: Session, background_tasks: BackgroundTasks):
-    """Upload the finished video to YouTube Shorts. Project must be in 'done' status."""
+    """Upload the finished video to YouTube Shorts. Project must be in 'rendered' status."""
     project = await _get_or_404(session, project_id)
-    if project.status != "done":
-        raise HTTPException(400, "Only 'done' projects can be uploaded")
+    if project.status != "rendered":
+        raise HTTPException(400, "Only 'rendered' projects can be uploaded")
     background_tasks.add_task(_process_upload, project_id)
     return project.to_dict()
 

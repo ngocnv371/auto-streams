@@ -1,4 +1,4 @@
-"""Full pipeline  (approved → done)."""
+"""Full pipeline  (approved → rendered)."""
 from __future__ import annotations
 
 import logging

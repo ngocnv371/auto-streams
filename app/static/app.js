@@ -116,7 +116,7 @@ function badge(status) {
 function statusColor(s) {
   return ({idea:'var(--s-idea)',approved:'var(--s-approved)',content_ready:'var(--s-content_ready)',
     scenes_ready:'var(--s-scenes_ready)',audio_ready:'var(--s-audio_ready)',images_ready:'var(--s-images_ready)',
-    clips_ready:'var(--s-clips_ready)',done:'var(--s-done)',uploaded:'var(--s-uploaded)',failed:'var(--s-failed)'})[s]||'var(--text)';
+    clips_ready:'var(--s-clips_ready)',rendered:'var(--s-rendered)',uploaded:'var(--s-uploaded)',failed:'var(--s-failed)'})[s]||'var(--text)';
 }
 function fmtDate(iso) {
   if (!iso) return '—';
@@ -256,7 +256,7 @@ function refreshCurrentPage() {
 // ═══════════════════════════════════════════════════════════
 //  Dashboard
 // ═══════════════════════════════════════════════════════════
-const PIPELINE_STATUSES = ['idea','approved','content_ready','scenes_ready','audio_ready','images_ready','clips_ready','done','uploaded','failed'];
+const PIPELINE_STATUSES = ['idea','approved','content_ready','scenes_ready','audio_ready','images_ready','clips_ready','rendered','uploaded','failed'];
 
 async function loadDashboard() {
   if (!currentTopicId) return;
@@ -264,7 +264,7 @@ async function loadDashboard() {
     const data = await api('GET', `/dashboard?topic_id=${currentTopicId}`);
     const sc = data.status_counts;
     $('s-total').textContent  = data.total;
-    $('s-done').textContent   = sc.done   || 0;
+    $('s-rendered').textContent = sc.rendered || 0;
     $('s-failed').textContent = sc.failed || 0;
     $('s-idea').textContent   = sc.idea   || 0;
 
@@ -322,7 +322,7 @@ async function loadProjects() {
               ${p.status==='idea'?`<button class="btn-sm approve" onclick="approveProject('${p.id}')">Approve</button>`:''}
               ${['idea','approved'].includes(p.status)?`<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`:''}
               ${p.status==='approved'?`<button class="btn-sm run" onclick="runPipeline('${p.id}')">▶ Run</button>`:''}
-              ${['done', 'uploaded', 'failed','images_ready','clips_ready'].includes(p.status)?`<button class="btn-sm rerender" onclick="reRender('${p.id}')">↺ Re-render</button>`:''}
+              ${['rendered', 'uploaded', 'failed','images_ready','clips_ready'].includes(p.status)?`<button class="btn-sm rerender" onclick="reRender('${p.id}')">↺ Re-render</button>`:''}
               <button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>
             </td>
           </tr>`).join('')}
@@ -566,9 +566,9 @@ function renderDetail(p) {
   if (p.status === 'idea') actions += `<button class="btn-sm approve" onclick="approveProject('${p.id}')">Approve</button>`;
   if (['idea','approved'].includes(p.status)) actions += `<button class="btn-sm reject" onclick="rejectProject('${p.id}')">Reject</button>`;
   if (p.status === 'approved') actions += `<button class="btn-sm run" id="run-btn-${p.id}" onclick="runPipeline('${p.id}')">▶ Run Pipeline</button>`;
-  if (['failed','images_ready','clips_ready'].includes(p.status)) actions += `<button class="btn-sm rerender" onclick="reRender('${p.id}')">↺ Re-render</button>`;
-  if (p.status === 'done') actions += `<button class="btn-sm upload" id="upload-btn-${p.id}" onclick="uploadToYouTube('${p.id}')">⬆ Upload to YouTube</button>`;
-  const allStatuses = ['idea','approved','content_ready','scenes_ready','audio_ready','images_ready','clips_ready','done','uploaded','failed'];
+  if (['rendered','failed','images_ready','clips_ready'].includes(p.status)) actions += `<button class="btn-sm rerender" onclick="reRender('${p.id}')">↺ Re-render</button>`;
+  if (p.status === 'rendered') actions += `<button class="btn-sm upload" id="upload-btn-${p.id}" onclick="uploadToYouTube('${p.id}')">⬆ Upload to YouTube</button>`;
+  const allStatuses = ['idea','approved','content_ready','scenes_ready','audio_ready','images_ready','clips_ready','rendered','uploaded','failed'];
   actions += `<select class="select-filter status-jump" onchange="setProjectStatus('${p.id}', this.value)" title="Set status">${allStatuses.map(s=>`<option value="${s}"${s===p.status?' selected':''}>${s.replace(/_/g,' ')}</option>`).join('')}</select>`;
   actions += `<button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>`;
   $('dp-actions').innerHTML = actions;
@@ -588,7 +588,7 @@ function renderDetail(p) {
 
   let body = '';
   const videoFile = meta.video_path ? meta.video_path.replace(/\\/g,'/').split('/').pop() : null;
-  if (p.status === 'done' && videoFile) {
+  if (p.status === 'rendered' && videoFile) {
     const videoSrc = `/api/projects/${p.id}/video/${encodeURIComponent(videoFile)}`;
     body += `<div class="detail-section">
       <div class="detail-section-title">Preview</div>

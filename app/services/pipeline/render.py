@@ -233,13 +233,13 @@ async def run_render_stage(project_id: str) -> None:
             m = p.get_metadata()
             m["video_path"] = final_path
             p.set_metadata(m)
-            p.status = "done"
+            p.status = "rendered"
             p.touch()
             await session.commit()
 
         log.info("render_stage done project=%s final=%s", project_id, final_path)
         _emit("Render complete", level="success", project_id=project_id, stage="render")
-        _emit_event("project_update", project_id=project_id, status="done")
+        _emit_event("project_update", project_id=project_id, status="rendered")
 
     except Exception:
         log.exception("render_stage failed project=%s", project_id)
