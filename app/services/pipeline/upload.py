@@ -1,4 +1,4 @@
-"""Stage 5 — upload  (done → uploaded)."""
+"""Stage 5 — upload  (rendered → uploaded)."""
 from __future__ import annotations
 
 import asyncio
@@ -146,13 +146,13 @@ def _do_upload(video_path: str, title: str, description: str, visibility: str) -
 # ── Stage entry point ────────────────────────────────────────────────────────
 
 async def run_upload_stage(project_id: str) -> None:
-    """Upload the final rendered video to YouTube Shorts.  done → uploaded."""
+    """Upload the final rendered video to YouTube Shorts.  rendered → uploaded."""
     log.info("upload_stage start project=%s", project_id)
     try:
         project = await _load_project(project_id)
-        if project is None or project.status != "done":
+        if project is None or project.status != "rendered":
             log.warning(
-                "upload_stage: project %s not in 'done' status (status=%s)",
+                "upload_stage: project %s not in 'rendered' status (status=%s)",
                 project_id, project.status if project else "not found",
             )
             return
