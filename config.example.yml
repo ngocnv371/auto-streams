@@ -33,6 +33,7 @@ kittentts:
   voice: Luna
 
 video:
+  scene_gap: 0.8
   enableKenBurns: true
   enableParticles: false
   enableSubtitles: true

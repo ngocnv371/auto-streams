@@ -1,10 +1,18 @@
 """Subtitle alignment (stable-ts) and ffmpeg burn-in for scene clips.
 
-Typical usage:
+Typical usage (single-scene, legacy):
 
     from app.services.pipeline.render_subtitles import align_and_burn
-
     subtitled_clip = align_and_burn(scene, clip_path, out_path, style=cfg.video.subtitleStyle)
+
+New bulk workflow (one TTS request → N scenes):
+
+    from app.services.pipeline.render_subtitles import align_full_audio_to_scenes, extract_audio_segment
+    scenes = align_full_audio_to_scenes(combined_wav, scenes, out_dir)
+    # Each scene now has audio_start, audio_end, duration, srt_path.
+    # During render, extract the segment then burn the pre-built SRT:
+    extract_audio_segment(combined_wav, scene["audio_start"], scene["audio_end"], seg_wav)
+    burn_subtitles_on_clip(clip_path, scene["srt_path"], sub_path, style=...)
 """
 from __future__ import annotations
 
@@ -238,3 +246,176 @@ def align_and_burn(
     )
     burn_subtitles_on_clip(clip_path, srt_path, out_path, style=style)
     return out_path
+
+
+# ── Bulk (whole-script) alignment ─────────────────────────────────────────────
+
+
+def extract_audio_segment(
+    audio_path: str,
+    start: float,
+    end: float,
+    out_path: str,
+    pad_secs: float = 0.0,
+) -> None:
+    """Cut the [start, end] second range from *audio_path* into *out_path* via ffmpeg.
+
+    Parameters
+    ----------
+    pad_secs:
+        Seconds of silence to append after the cut segment (default ``0.0``).  
+        Use this to add a natural breathing gap between scenes.
+    """
+    af = f"apad=pad_dur={pad_secs:.3f}" if pad_secs > 0 else None
+    cmd = [
+        "ffmpeg", "-y",
+        "-ss", f"{start:.3f}",
+        "-to", f"{end:.3f}",
+        "-i", audio_path,
+    ]
+    if af:
+        cmd += ["-af", af]
+    cmd.append(out_path)
+    log.debug(
+        "extract_audio_segment: %s [%.3f-%.3f] pad=%.3fs -> %s",
+        audio_path, start, end, pad_secs, out_path,
+    )
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        log.error("extract_audio_segment ffmpeg failed\nSTDERR:\n%s", result.stderr)
+        result.check_returncode()
+
+
+def _write_srt_from_stable_ts_segments(segments: list, offset: float, out_path: str) -> None:
+    """Write an SRT file from stable-ts Segment objects, shifting timestamps by *-offset*.
+
+    Parameters
+    ----------
+    segments:
+        List of stable-ts ``Segment`` objects with ``.start``, ``.end``, ``.text``.
+    offset:
+        Scene start time (seconds) to subtract so timestamps are relative to
+        the beginning of the scene clip.
+    out_path:
+        Destination ``.srt`` file path.
+    """
+    def _ts(t: float) -> str:
+        t = max(0.0, t - offset)
+        h = int(t // 3600)
+        m = int((t % 3600) // 60)
+        s = int(t % 60)
+        ms = int(round((t - int(t)) * 1000))
+        return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        for idx, seg in enumerate(segments, start=1):
+            f.write(f"{idx}\n")
+            f.write(f"{_ts(seg.start)} --> {_ts(seg.end)}\n")
+            f.write(f"{seg.text.strip()}\n\n")
+
+
+def align_full_audio_to_scenes(
+    audio_path: str,
+    scenes: list[dict],
+    out_dir: str,
+    transcript: str,
+    language: str = "en",
+    model_name: str = "base",
+) -> list[dict]:
+    """Align one combined TTS audio file against all scene voiceovers in a single pass.
+
+    Instead of calling stable-ts once per scene (N requests), this function
+    uses the original full *transcript* and aligns in one shot.  Per-scene
+    timing is recovered by assigning result segments back to scenes
+    proportionally by word count.
+
+    Each returned scene dict gains:
+
+    - ``audio_start`` / ``audio_end`` – offsets (seconds) into *audio_path*
+    - ``duration`` – ``audio_end - audio_start``
+    - ``srt_path`` – path to an SRT file whose timestamps are relative to
+      ``audio_start`` (ready to burn directly onto the per-scene clip)
+
+    Scenes without a voiceover are returned unchanged.
+
+    Parameters
+    ----------
+    audio_path:
+        Combined WAV produced by a single whole-script TTS call.
+    scenes:
+        List of scene metadata dicts; each should contain a ``"voiceover"`` key.
+    out_dir:
+        Directory where per-scene ``scene_NNN_tts.srt`` files are written.
+    transcript:
+        The original full script text that was sent to the TTS service.
+    language:
+        BCP-47 language code passed to stable-ts (default ``"en"``).
+    model_name:
+        Whisper model size for alignment (default ``"base"``).
+    """
+    voiceovers = [s.get("voiceover", "").strip() for s in scenes]
+    scene_word_counts = [len(v.split()) if v else 0 for v in voiceovers]
+
+    model = _get_whisper_model(model_name)
+    log.info(
+        "align_full_audio_to_scenes: %d scenes  %d total words  model=%r",
+        len(scenes), sum(scene_word_counts), model_name,
+    )
+
+    result = model.align(audio_path, transcript, language=language)
+    all_segments = result.segments
+
+    if not all_segments:
+        log.warning("align_full_audio_to_scenes: stable-ts returned no segments; skipping")
+        return scenes
+
+    # ── Assign segments to scenes by cumulative word count ────────────────────
+    # Build the cumulative word-count boundaries: scene i "owns" words up to
+    # scene_cum_words[i] in the full transcript.
+    scene_cum_words: list[int] = []
+    cum = 0
+    for wc in scene_word_counts:
+        cum += wc
+        scene_cum_words.append(cum)
+
+    scene_segs: list[list] = [[] for _ in scenes]
+    cum_words_seen = 0
+    scene_ptr = 0
+
+    for seg in all_segments:
+        words_in_seg = len(seg.text.strip().split())
+        # Assign to the current scene
+        scene_segs[scene_ptr].append(seg)
+        cum_words_seen += words_in_seg
+        # Advance to the next scene once we've consumed its word budget
+        while (
+            scene_ptr < len(scene_cum_words) - 1
+            and cum_words_seen >= scene_cum_words[scene_ptr]
+        ):
+            scene_ptr += 1
+
+    # ── Build updated scene dicts ─────────────────────────────────────────────
+    updated_scenes: list[dict] = []
+    for i, scene in enumerate(scenes):
+        segs = scene_segs[i]
+        if segs and voiceovers[i]:
+            start = segs[0].start
+            end = segs[-1].end
+            srt_path = os.path.join(out_dir, f"scene_{i:03d}_tts.srt")
+            _write_srt_from_stable_ts_segments(segs, start, srt_path)
+            log.debug(
+                "align_full_audio_to_scenes: scene %d  %.3f-%.3f s  srt=%s",
+                i, start, end, srt_path,
+            )
+            updated_scenes.append({
+                **scene,
+                "audio_start": start,
+                "audio_end": end,
+                "duration": round(end - start, 3),
+                "srt_path": srt_path,
+            })
+        else:
+            log.warning("align_full_audio_to_scenes: scene %d has no aligned segments", i)
+            updated_scenes.append(scene)
+
+    return updated_scenes

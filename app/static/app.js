@@ -470,18 +470,6 @@ async function rerunSceneImage(id, sceneIndex, btn) {
   }
 }
 
-async function rerunSceneAudio(id, sceneIndex, btn) {
-  btn.disabled = true; btn.textContent = '…';
-  try {
-    await api('POST', `/projects/${id}/scenes/${sceneIndex}/rerun/audio`);
-    toast(`Scene ${sceneIndex + 1} audio queued`, 'success');
-    setTimeout(() => openDetail(id), 800);
-  } catch (e) {
-    toast(e.message, 'error');
-    btn.disabled = false; btn.textContent = '↺ Audio';
-  }
-}
-
 async function rerunMusic(id, btn) {
   btn.disabled = true; btn.textContent = '…';
   try {
@@ -508,11 +496,11 @@ async function rerunAllImages(id, btn) {
 }
 
 async function rerunAllAudio(id, btn) {
-  if (!confirm('Regenerate ALL scene audio? This will overwrite every existing TTS file.')) return;
+  if (!confirm('Regenerate ALL audio? This will send a new TTS request for the whole script.')) return;
   btn.disabled = true; btn.textContent = '…';
   try {
     await api('POST', `/projects/${id}/rerun/audio`);
-    toast('All audio queued for regeneration', 'success');
+    toast('Audio regeneration queued', 'success');
     setTimeout(() => openDetail(id), 800);
   } catch (e) {
     toast(e.message, 'error');
@@ -641,7 +629,6 @@ function renderDetail(p) {
             ${assets.length?`<div class="scene-assets">${assets.map(a=>`<span class="asset-chip">${a}</span>`).join('')}</div>`:''}
             <div class="scene-rerun-actions">
               ${imageFile||s.image_prompt?`<button class="btn-sm rerun-asset" onclick="rerunSceneImage('${p.id}',${i},this)">↺ Image</button>`:''}
-              ${audioFile||s.voiceover?`<button class="btn-sm rerun-asset" onclick="rerunSceneAudio('${p.id}',${i},this)">↺ Audio</button>`:''}
             </div>
           </div>
         </div>`;

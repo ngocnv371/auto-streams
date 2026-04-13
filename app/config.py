@@ -52,6 +52,7 @@ class ProvidersConfig:
     tts: str = "kittentts"  # gemini | kittentts
     music: str = "comfy"    # comfy
     tts_delay: float = 0.0  # seconds to wait between per-scene TTS calls
+    tts_language: str = "en"  # BCP-47 language code for TTS alignment
 
 
 @dataclass
@@ -68,6 +69,8 @@ class VideoConfig:
     enableParticles: bool = False
     enableSubtitles: bool = False
     subtitleStyle: SubtitleStyle = field(default_factory=SubtitleStyle)
+    whisper_model: str = "base"  # stable-ts model for script alignment (tiny/base/small/medium/large)
+    scene_gap: float = 0.5  # seconds of silence appended to each scene's audio segment
 
 
 @dataclass
@@ -137,6 +140,8 @@ def _build_config(data: dict) -> AppConfig:
             enableParticles=d.get("enableParticles", False),
             enableSubtitles=d.get("enableSubtitles", False),
             subtitleStyle=SubtitleStyle(**d.get("subtitleStyle", {})),
+            whisper_model=d.get("whisper_model", "base"),
+            scene_gap=d.get("scene_gap", 0.5),
         )
 
     if "server" in data:

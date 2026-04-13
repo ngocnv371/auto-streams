@@ -31,14 +31,18 @@ async def run_music_stage(project_id: str) -> None:
     _emit("Music generation started", project_id=project_id, stage="music")
     try:
         project = await _load_project(project_id)
-        if project is None or project.status != "tts_ready":
-            log.warning(
-                "music_stage: project %s not in tts_ready (status=%s)",
-                project_id, project.status if project else "not found",
-            )
+        if project is None:
+            log.warning("music_stage: project %s not found", project_id)
             return
 
         meta = project.get_metadata()
+        if not meta.get("scenes"):
+            log.warning(
+                "music_stage: project %s has no scenes in metadata (status=%s), skipping",
+                project_id, project.status,
+            )
+            return
+
         music_prompt = meta.get("music") or "calm ambient background music"
         duration = int(meta.get("duration") or 60)
         log.info("music_stage: generating music  prompt=%r  duration=%ds  provider=%r",

@@ -31,15 +31,18 @@ async def run_image_stage(project_id: str) -> None:
     _emit("Image stage started", project_id=project_id, stage="image")
     try:
         project = await _load_project(project_id)
-        if project is None or project.status != "music_ready":
-            log.warning(
-                "image_stage: project %s not in music_ready (status=%s)",
-                project_id, project.status if project else "not found",
-            )
+        if project is None:
+            log.warning("image_stage: project %s not found", project_id)
             return
 
         meta = project.get_metadata()
         scenes = meta.get("scenes", [])
+        if not scenes:
+            log.warning(
+                "image_stage: project %s has no scenes in metadata (status=%s), skipping",
+                project_id, project.status,
+            )
+            return
         visual_guide = meta.get("visual_guide", "")
         log.info("image_stage: %d scenes  provider=%r  visual_guide=%r",
                  len(scenes), get_config().providers.image, visual_guide[:80])

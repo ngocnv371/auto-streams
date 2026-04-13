@@ -10,7 +10,7 @@ import time
 from app.config import get_config
 from app.database import get_session_factory
 from app.models import Project
-from .render_subtitles import align_and_burn
+from .render_subtitles import align_and_burn, burn_subtitles_on_clip, extract_audio_segment
 
 from ._helpers import (
     _audio_duration,
@@ -166,11 +166,31 @@ async def run_render_stage(project_id: str) -> None:
         clip_paths: list[str] = []
         for i, scene in enumerate(scenes):
             clip_path = os.path.join(out_dir, f"scene_{i:03d}_clip.mp4")
+
+            # ── Resolve per-scene audio segment ───────────────────────
+            # When the TTS stage ran in bulk mode the scene carries
+            # audio_start/audio_end offsets into a shared combined_tts.wav.
+            # Extract the segment so _render_scene_clip gets a standalone file.
+            audio_start = scene.get("audio_start")
+            audio_end = scene.get("audio_end")
+            combined_audio = scene.get("audio_path")
+            if audio_start is not None and audio_end is not None and combined_audio:
+                seg_path = os.path.join(out_dir, f"scene_{i:03d}_tts_seg.wav")
+                if not os.path.exists(seg_path):
+                    await asyncio.to_thread(
+                        extract_audio_segment,
+                        combined_audio, audio_start, audio_end, seg_path,
+                        cfg.video.scene_gap,
+                    )
+                scene_for_render = {**scene, "audio_path": seg_path}
+            else:
+                scene_for_render = scene
+
             if os.path.exists(clip_path):
                 log.info("render_stage: clip %d/%d already exists, reusing  path=%s", i + 1, len(scenes), clip_path)
             else:
                 t_clip = time.monotonic()
-                await asyncio.to_thread(_render_scene_clip, scene, clip_path)
+                await asyncio.to_thread(_render_scene_clip, scene_for_render, clip_path)
                 log.info(
                     "render_stage: clip %d/%d done  elapsed=%s  path=%s",
                     i + 1, len(scenes), _elapsed(t_clip), clip_path,
@@ -184,10 +204,19 @@ async def run_render_stage(project_id: str) -> None:
                     log.info("render_stage: subtitled clip %d/%d already exists, reusing", i + 1, len(scenes))
                 else:
                     t_sub = time.monotonic()
-                    sub_path = await asyncio.to_thread(
-                        align_and_burn, scene, clip_path, sub_path,
-                        style=cfg.video.subtitleStyle,
-                    )
+                    pre_built_srt = scene.get("srt_path")
+                    if pre_built_srt and os.path.exists(pre_built_srt):
+                        # Fast path: SRT was already produced during TTS alignment
+                        await asyncio.to_thread(
+                            burn_subtitles_on_clip, clip_path, pre_built_srt, sub_path,
+                            cfg.video.subtitleStyle,
+                        )
+                    else:
+                        # Fallback: align + burn for scenes without a pre-built SRT
+                        sub_path = await asyncio.to_thread(
+                            align_and_burn, scene_for_render, clip_path, sub_path,
+                            style=cfg.video.subtitleStyle,
+                        )
                     log.info(
                         "render_stage: subtitles %d/%d done  elapsed=%s  path=%s",
                         i + 1, len(scenes), _elapsed(t_sub), sub_path,

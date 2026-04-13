@@ -19,7 +19,6 @@ from app.services.pipeline import (
     run_render_stage,
     run_scene_image,
     run_all_scene_images,
-    run_scene_tts,
     run_all_scene_tts,
     rerun_music,
     run_upload_stage,
@@ -179,21 +178,6 @@ async def rerun_scene_image(
     return project.to_dict()
 
 
-@router.post("/{project_id}/scenes/{scene_index}/rerun/audio", response_model=ProjectOut)
-async def rerun_scene_audio(
-    project_id: str, scene_index: int, session: Session, background_tasks: BackgroundTasks
-):
-    """Re-generate TTS audio for a single scene without touching any other assets."""
-    project = await _get_or_404(session, project_id)
-    meta = project.get_metadata()
-    scenes = meta.get("scenes", [])
-    if not scenes or scene_index < 0 or scene_index >= len(scenes):
-        raise HTTPException(400, f"Scene index {scene_index} is out of range (0–{len(scenes)-1})")
-    if not scenes[scene_index].get("voiceover", "").strip():
-        raise HTTPException(400, f"Scene {scene_index} has no voiceover text")
-    background_tasks.add_task(_process_scene_tts, project_id, scene_index)
-    return project.to_dict()
-
 
 @router.post("/{project_id}/upload", response_model=ProjectOut)
 async def upload_project(project_id: str, session: Session, background_tasks: BackgroundTasks):
@@ -229,7 +213,7 @@ async def rerun_all_images(project_id: str, session: Session, background_tasks: 
 
 @router.post("/{project_id}/rerun/audio", response_model=ProjectOut)
 async def rerun_all_audio(project_id: str, session: Session, background_tasks: BackgroundTasks):
-    """Re-generate TTS audio for all scenes without changing project status."""
+    """Re-generate TTS audio for the whole script without changing project status."""
     project = await _get_or_404(session, project_id)
     meta = project.get_metadata()
     if not meta.get("scenes"):
@@ -307,8 +291,8 @@ async def _process_scene_image(project_id: str, scene_index: int) -> None:
     await run_scene_image(project_id, scene_index)
 
 
-async def _process_scene_tts(project_id: str, scene_index: int) -> None:
-    await run_scene_tts(project_id, scene_index)
+async def _process_all_scene_tts(project_id: str) -> None:
+    await run_all_scene_tts(project_id)
 
 
 async def _process_rerun_music(project_id: str) -> None:
@@ -317,10 +301,6 @@ async def _process_rerun_music(project_id: str) -> None:
 
 async def _process_all_scene_images(project_id: str) -> None:
     await run_all_scene_images(project_id)
-
-
-async def _process_all_scene_tts(project_id: str) -> None:
-    await run_all_scene_tts(project_id)
 
 
 async def _process_upload(project_id: str) -> None:
