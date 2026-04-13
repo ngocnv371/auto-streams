@@ -63,15 +63,18 @@ async def run_music_stage(project_id: str) -> None:
             p = await session.get(Project, project_id)
             m = p.get_metadata()
             m["music_path"] = music_path
+            m["music_done"] = True
             p.set_metadata(m)
-            p.status = "music_ready"
+            if m.get("images_done"):
+                p.status = "media_ready"
             p.touch()
             await session.commit()
+            new_status = p.status
 
-        log.info("music_stage done project=%s", project_id)
+        log.info("music_stage done project=%s  status=%s", project_id, new_status)
         _emit("Music stage complete", level="success", project_id=project_id, stage="music")
         from app.events import emit as _emit_event
-        _emit_event("project_update", project_id=project_id, status="music_ready")
+        _emit_event("project_update", project_id=project_id, status=new_status)
 
     except Exception:
         log.exception("music_stage failed project=%s", project_id)

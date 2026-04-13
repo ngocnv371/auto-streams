@@ -27,19 +27,23 @@ Each project moves through a pipeline. Steps can be batched across projects to m
 [scenes_ready]   ─── generate: scenes[] from transcript           │
     │                           + narrator + visual_guide          │
     ▼                                                              │
-[tts_ready]      ─── generate: voiceover audio per scene          │
-    │                                                              │
-    ▼                                                              │
-[music_ready]    ─── generate: project-level background music     │
-    │                                                              │
-    ▼                                                              │
-[images_ready]   ─── generate: image per scene                    │
+[tts_ready]      ─── generate: voiceover audio + alignment        │
+    │                           (sets duration for music)          │
+    ├──────────────────────┐                                       │
+    ▼                      ▼                                       │
+[music gen]          [image gen]   ← run in parallel              │
+ generate background   image per scene                             │
+ music (needs duration)                                            │
+    └──────────────────────┘                                       │
+                 │  both done                                       │
+                 ▼                                                  │
+[media_ready]    ─── music + all images complete                   │
     │                                                              │
     ▼                                                              │
 [clips_ready]    ─── render: clip per scene (audio + image        │
-    │                         + subtitles + tail padding)          │
+    │                         + subtitles + Ken Burns)             │
     ▼                                                              │
-[done]           ─── stitch all clips → final video               │
+[rendered]       ─── stitch all clips → final video               │
     │                                                              │
     ▼                                                              │
 [failed]  ◄──────────── any unrecoverable error ──────────────────┘
@@ -49,19 +53,21 @@ Each project moves through a pipeline. Steps can be batched across projects to m
 
 Because ComfyUI benefits from keeping models loaded, steps are collected and executed in batch:
 
-| Queue | Collected from |
-|-------|---------------|
-| `text_queue` | transcript + prompts generation (LLM calls) |
-| `tts_queue` | voiceover per scene (advances to `tts_ready`) |
-| `music_queue` | background music per project (advances to `music_ready`) |
-| `image_queue` | image per scene |
-| `render_queue` | clip rendering (local, CPU/GPU) |
+| Queue | Collected from | Advances to |
+|-------|----------------|-------------|
+| `text_queue` | `approved` | `scenes_ready` |
+| `tts_queue` | `scenes_ready` | `tts_ready` |
+| `music_queue` | `tts_ready` | `media_ready` (when images also done) |
+| `image_queue` | `tts_ready` | `media_ready` (when music also done) |
+| `render_queue` | `media_ready` | `rendered` |
+
+Music and image queues can be run simultaneously — whichever finishes last advances the project to `media_ready`.
 
 ## Projects
 
 ### Status lifecycle
 
-`idea` → `approved` → `content_ready` → `scenes_ready` → `tts_ready` → `music_ready` → `images_ready` → `clips_ready` → `done` | `failed`
+`idea` → `approved` → `content_ready` → `scenes_ready` → `tts_ready` → `media_ready` (music + images in parallel) → `clips_ready` → `rendered` → `uploaded` | `failed`
 
 ### Data model
 

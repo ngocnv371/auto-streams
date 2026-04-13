@@ -27,9 +27,9 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 _QUEUE_STATUS_MAP: dict[str, list[str]] = {
     "text_queue":   ["approved"],
     "tts_queue":    ["scenes_ready"],
-    "music_queue":  ["scenes_ready"],
-    "image_queue":  ["music_ready"],
-    "render_queue": ["images_ready", "clips_ready"],
+    "music_queue":  ["tts_ready"],
+    "image_queue":  ["tts_ready"],
+    "render_queue": ["media_ready", "images_ready", "clips_ready"],
 }
 
 

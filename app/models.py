@@ -16,8 +16,9 @@ PROJECT_STATUSES = [
     "content_ready",
     "scenes_ready",
     "tts_ready",
-    "music_ready",
-    "images_ready",
+    "music_ready",    # legacy sequential path
+    "images_ready",   # legacy sequential path
+    "media_ready",    # tts + music + images all complete (parallel path)
     "clips_ready",
     "rendered",
     "uploaded",

@@ -1,4 +1,4 @@
-"""Stage 4 — render  (images_ready / clips_ready → done)."""
+"""Stage 4 — render  (media_ready / clips_ready → done)."""
 from __future__ import annotations
 
 import asyncio
@@ -140,16 +140,16 @@ def _mix_music(video_path: str, music_path: str, out_path: str) -> None:
 
 
 async def run_render_stage(project_id: str) -> None:
-    """Render per-scene clips then assemble the final video. images_ready / clips_ready → done."""
+    """Render per-scene clips then assemble the final video. media_ready / clips_ready → done."""
     from app.events import inc_active, dec_active, emit as _emit_event
     log.info("render_stage start project=%s", project_id)
     inc_active()
     _emit("Render stage started", project_id=project_id, stage="render")
     try:
         project = await _load_project(project_id)
-        if project is None or project.status not in ("images_ready", "clips_ready"):
+        if project is None or project.status not in ("images_ready", "media_ready", "clips_ready"):
             log.warning(
-                "render_stage: project %s not in images_ready/clips_ready (status=%s)",
+                "render_stage: project %s not in media_ready/clips_ready (status=%s)",
                 project_id, project.status if project else "not found",
             )
             return

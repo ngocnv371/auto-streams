@@ -19,6 +19,7 @@
   --s-tts_ready:     #fb923c;
   --s-music_ready:   #f59e0b;
   --s-images_ready:  #f472b6;
+  --s-media_ready:   #a78bfa;
   --s-clips_ready:   #2dd4bf;
   --s-rendered:      #4ade80;
   --s-uploaded:      #a3e635;
@@ -344,6 +345,7 @@ tbody td { padding: .65rem .75rem; vertical-align: middle; }
 .badge-tts_ready     { background: rgba(251,146,60,.15);  color: var(--s-tts_ready); }
 .badge-music_ready   { background: rgba(245,158,11,.15);  color: var(--s-music_ready); }
 .badge-images_ready  { background: rgba(244,114,182,.15); color: var(--s-images_ready); }
+.badge-media_ready   { background: rgba(167,139,250,.15); color: var(--s-media_ready); }
 .badge-clips_ready   { background: rgba(45,212,191,.15);  color: var(--s-clips_ready); }
 .badge-rendered      { background: rgba(74,222,128,.15);  color: var(--s-rendered); }
 .badge-uploaded      { background: rgba(163,230,53,.15);   color: var(--s-uploaded); }
