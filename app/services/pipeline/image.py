@@ -31,9 +31,9 @@ async def run_image_stage(project_id: str) -> None:
     _emit("Image stage started", project_id=project_id, stage="image")
     try:
         project = await _load_project(project_id)
-        if project is None or project.status != "audio_ready":
+        if project is None or project.status != "music_ready":
             log.warning(
-                "image_stage: project %s not in audio_ready (status=%s)",
+                "image_stage: project %s not in music_ready (status=%s)",
                 project_id, project.status if project else "not found",
             )
             return

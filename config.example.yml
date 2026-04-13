@@ -8,6 +8,7 @@ providers:
   image: comfy          # gemini | comfy
   tts: kittentts        # gemini | kittentts
   music: comfy          # comfy
+  tts_delay: 3          # seconds to wait between per-scene TTS calls (increase if hitting rate limits)
 
 gemini:
   api_key: YOUR_KEY

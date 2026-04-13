@@ -51,6 +51,7 @@ class ProvidersConfig:
     image: str = "comfy"    # gemini | comfy
     tts: str = "kittentts"  # gemini | kittentts
     music: str = "comfy"    # comfy
+    tts_delay: float = 0.0  # seconds to wait between per-scene TTS calls
 
 
 @dataclass

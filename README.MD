@@ -27,8 +27,11 @@ Each project moves through a pipeline. Steps can be batched across projects to m
 [scenes_ready]   ─── generate: scenes[] from transcript           │
     │                           + narrator + visual_guide          │
     ▼                                                              │
-[audio_ready]    ─── generate: voiceover audio per scene          │
-    │                           + project-level music              │
+[tts_ready]      ─── generate: voiceover audio per scene          │
+    │                                                              │
+    ▼                                                              │
+[music_ready]    ─── generate: project-level background music     │
+    │                                                              │
     ▼                                                              │
 [images_ready]   ─── generate: image per scene                    │
     │                                                              │
@@ -49,8 +52,8 @@ Because ComfyUI benefits from keeping models loaded, steps are collected and exe
 | Queue | Collected from |
 |-------|---------------|
 | `text_queue` | transcript + prompts generation (LLM calls) |
-| `tts_queue` | voiceover per scene |
-| `music_queue` | background music per project |
+| `tts_queue` | voiceover per scene (advances to `tts_ready`) |
+| `music_queue` | background music per project (advances to `music_ready`) |
 | `image_queue` | image per scene |
 | `render_queue` | clip rendering (local, CPU/GPU) |
 
@@ -58,7 +61,7 @@ Because ComfyUI benefits from keeping models loaded, steps are collected and exe
 
 ### Status lifecycle
 
-`idea` → `approved` → `content_ready` → `scenes_ready` → `audio_ready` → `images_ready` → `clips_ready` → `done` | `failed`
+`idea` → `approved` → `content_ready` → `scenes_ready` → `tts_ready` → `music_ready` → `images_ready` → `clips_ready` → `done` | `failed`
 
 ### Data model
 

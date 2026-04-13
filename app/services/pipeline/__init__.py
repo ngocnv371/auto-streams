@@ -2,9 +2,9 @@
 
 Status flow:
   approved      → [text_stage]   → scenes_ready
-  scenes_ready  → [tts_stage]    → audio_ready   (TTS per scene + music)
-  scenes_ready  → [music_stage]  →               (music only, no status change)
-  audio_ready   → [image_stage]  → images_ready
+  scenes_ready  → [tts_stage]    → tts_ready     (TTS per scene)
+  tts_ready     → [music_stage]  → music_ready   (background music)
+  music_ready   → [image_stage]  → images_ready
   images_ready  → [render_stage] → clips_ready → done
 
 Per-asset reruns (no status change):
@@ -15,9 +15,10 @@ Per-asset reruns (no status change):
 
 from .full import run_full_pipeline
 from .image import run_all_scene_images, run_image_stage, run_scene_image
+from .music import rerun_music, run_music_stage
 from .render import run_render_stage
 from .text import run_text_stage
-from .tts import rerun_music, run_all_scene_tts, run_music_stage, run_scene_tts, run_tts_stage
+from .tts import run_all_scene_tts, run_scene_tts, run_tts_stage
 from .upload import run_upload_stage
 
 __all__ = [

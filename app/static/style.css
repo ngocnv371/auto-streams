@@ -16,7 +16,8 @@
   --s-approved:      #38bdf8;
   --s-content_ready: #34d399;
   --s-scenes_ready:  #a78bfa;
-  --s-audio_ready:   #fb923c;
+  --s-tts_ready:     #fb923c;
+  --s-music_ready:   #f59e0b;
   --s-images_ready:  #f472b6;
   --s-clips_ready:   #2dd4bf;
   --s-rendered:      #4ade80;
@@ -340,7 +341,8 @@ tbody td { padding: .65rem .75rem; vertical-align: middle; }
 .badge-approved      { background: rgba(56,189,248,.15);  color: var(--s-approved); }
 .badge-content_ready { background: rgba(52,211,153,.15);  color: var(--s-content_ready); }
 .badge-scenes_ready  { background: rgba(167,139,250,.15); color: var(--s-scenes_ready); }
-.badge-audio_ready   { background: rgba(251,146,60,.15);  color: var(--s-audio_ready); }
+.badge-tts_ready     { background: rgba(251,146,60,.15);  color: var(--s-tts_ready); }
+.badge-music_ready   { background: rgba(245,158,11,.15);  color: var(--s-music_ready); }
 .badge-images_ready  { background: rgba(244,114,182,.15); color: var(--s-images_ready); }
 .badge-clips_ready   { background: rgba(45,212,191,.15);  color: var(--s-clips_ready); }
 .badge-rendered      { background: rgba(74,222,128,.15);  color: var(--s-rendered); }
@@ -462,8 +464,8 @@ tbody td { padding: .65rem .75rem; vertical-align: middle; }
 .scene-audio { margin-top: .35rem; }
 .scene-audio audio { width: 100%; height: 28px; border-radius: 6px; accent-color: var(--primary); }
 .scene-rerun-actions { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .5rem; }
-.btn-sm.rerun-asset { border-color: var(--s-audio_ready); color: var(--s-audio_ready); }
-.btn-sm.rerun-asset:hover { background: var(--s-audio_ready); color: #fff; }
+.btn-sm.rerun-asset { border-color: var(--s-tts_ready); color: var(--s-tts_ready); }
+.btn-sm.rerun-asset:hover { background: var(--s-tts_ready); color: #fff; }
 .btn-sm.rerun-asset:disabled { opacity: .45; cursor: not-allowed; }
 .music-audio { margin-top: .5rem; }
 .music-audio-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin-bottom: .3rem; }
