@@ -458,6 +458,12 @@ async function uploadToYouTube(id) {
   }
 }
 
+async function openProjectFolder(id) {
+  try {
+    await api('POST', `/projects/${id}/open-folder`);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
 async function rerunSceneImage(id, sceneIndex, btn) {
   btn.disabled = true; btn.textContent = '…';
   try {
@@ -556,6 +562,7 @@ function renderDetail(p) {
   if (p.status === 'approved') actions += `<button class="btn-sm run" id="run-btn-${p.id}" onclick="runPipeline('${p.id}')">▶ Run Pipeline</button>`;
   if (['rendered','failed','media_ready','images_ready','clips_ready'].includes(p.status)) actions += `<button class="btn-sm rerender" onclick="reRender('${p.id}')">↺ Re-render</button>`;
   if (p.status === 'rendered') actions += `<button class="btn-sm upload" id="upload-btn-${p.id}" onclick="uploadToYouTube('${p.id}')">⬆ Upload to YouTube</button>`;
+  actions += `<button class="btn-sm" title="Open project folder in Explorer" onclick="openProjectFolder('${p.id}')">📂 Open Folder</button>`;
   const allStatuses = ['idea','approved','content_ready','scenes_ready','tts_ready','media_ready','clips_ready','rendered','uploaded','failed'];
   actions += `<select class="select-filter status-jump" onchange="setProjectStatus('${p.id}', this.value)" title="Set status">${allStatuses.map(s=>`<option value="${s}"${s===p.status?' selected':''}>${s.replace(/_/g,' ')}</option>`).join('')}</select>`;
   actions += `<button class="btn-sm delete" onclick="deleteProject('${p.id}')">Delete</button>`;

@@ -222,6 +222,22 @@ async def rerun_all_audio(project_id: str, session: Session, background_tasks: B
     return project.to_dict()
 
 
+@router.post("/{project_id}/open-folder", status_code=204, include_in_schema=False)
+async def open_project_folder(project_id: str, session: Session):
+    """Open the project's temp folder in Windows Explorer."""
+    import subprocess
+    import sys
+    await _get_or_404(session, project_id)
+    from app.config import get_config
+    cfg = get_config()
+    proj_dir = os.path.abspath(os.path.join(cfg.temp_dir, project_id))
+    os.makedirs(proj_dir, exist_ok=True)
+    if sys.platform == "win32":
+        subprocess.Popen(["explorer", proj_dir])
+    else:
+        subprocess.Popen(["xdg-open", proj_dir])
+
+
 @router.get("/{project_id}/audio/{filename}", include_in_schema=False)
 async def serve_audio(project_id: str, filename: str, session: Session):
     """Stream a generated audio file (TTS scene or music) for in-browser preview."""
