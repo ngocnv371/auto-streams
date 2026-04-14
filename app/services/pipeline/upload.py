@@ -163,8 +163,17 @@ async def run_upload_stage(project_id: str) -> None:
             raise ValueError("video_path missing from project metadata")
 
         tags: list[str] = meta.get("tags", [])
-        tag_suffix = "  " + "  ".join(f"#{t}" for t in tags) if tags else ""
-        title: str = project.title + tag_suffix
+        base_title: str = project.title
+        _MAX_TITLE = 100
+        remaining_tags = list(tags)
+        while True:
+            tag_suffix = "  " + "  ".join(f"#{t}" for t in remaining_tags) if remaining_tags else ""
+            title = base_title + tag_suffix
+            if len(title) <= _MAX_TITLE or not remaining_tags:
+                break
+            dropped = remaining_tags.pop()
+            log.debug("upload_stage: title too long (%d), dropped tag %r", len(title), dropped)
+        title = title[:_MAX_TITLE]
         description: str = meta.get("summary", "")
         cfg = get_config()
         visibility: str = cfg.youtube.visibility
