@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import logging
 import os
 import time
@@ -184,15 +185,33 @@ async def run_upload_stage(project_id: str) -> None:
         )
 
         t0 = time.monotonic()
-        url = await asyncio.to_thread(_do_upload, video_path, title, description, visibility)
-        log.info("upload_stage: upload done  elapsed=%s  url=%s", _elapsed(t0), url)
+        upload_error: str | None = None
+        url: str | None = None
+        try:
+            url = await asyncio.to_thread(_do_upload, video_path, title, description, visibility)
+            log.info("upload_stage: upload done  elapsed=%s  url=%s", _elapsed(t0), url)
+        except Exception as exc:
+            upload_error = str(exc)
+            log.exception("upload_stage: _do_upload failed project=%s", project_id)
 
+        uploaded_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
         factory = get_session_factory()
         async with factory() as session:
             p = await session.get(Project, project_id)
             m = p.get_metadata()
-            m["youtube_url"] = url
+            m["uploaded_at"] = uploaded_at
+            if url:
+                m["youtube_url"] = url
             p.set_metadata(m)
+            await session.commit()
+
+        if upload_error:
+            await _fail_project(project_id, f"upload_stage failed: {upload_error}")
+            return
+
+        factory = get_session_factory()
+        async with factory() as session:
+            p = await session.get(Project, project_id)
             p.status = "uploaded"
             p.touch()
             await session.commit()

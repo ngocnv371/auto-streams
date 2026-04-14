@@ -572,6 +572,7 @@ function renderDetail(p) {
     ['Duration',     meta.duration != null ? `${meta.duration}s` : null],
     ['Word count',   meta.word_count],
     ['Tags',         p.tags.length ? p.tags.join(', ') : null],
+    ['Uploaded at',  meta.uploaded_at ? new Date(meta.uploaded_at).toLocaleString() : null],
   ].filter(([,v]) => v != null);
 
   let body = '';
