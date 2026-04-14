@@ -298,13 +298,25 @@ function debounceLoadProjects() {
 async function loadProjects() {
   if (!currentTopicId) return;
   const search = $('search-input').value.trim();
+  const tagFilter = $('tag-filter')?.value || '';
   const status = $('status-filter').value;
   const params = new URLSearchParams({ topic_id: currentTopicId, limit: '200' });
   if (search) params.set('search', search);
   if (status) params.set('status', status);
   const wrap = $('projects-table-wrap');
   try {
-    const projects = await api('GET', `/projects?${params}`);
+    const allProjects = await api('GET', `/projects?${params}`);
+    // Rebuild tag select with unique tags from the full result set
+    const tagSel = $('tag-filter');
+    if (tagSel) {
+      const current = tagSel.value;
+      const allTags = [...new Set(allProjects.flatMap(p => p.tags))].sort();
+      tagSel.innerHTML = '<option value="">All tags</option>' +
+        allTags.map(t => `<option value="${escHtml(t)}"${t === current ? ' selected' : ''}>${escHtml(t)}</option>`).join('');
+    }
+    const projects = tagFilter
+      ? allProjects.filter(p => p.tags.includes(tagFilter))
+      : allProjects;
     if (!projects.length) {
       wrap.innerHTML = '<div class="empty">No projects yet — Generate Ideas to get started.</div>';
       return;
@@ -578,7 +590,6 @@ function renderDetail(p) {
     ['Visual guide', meta.visual_guide],
     ['Duration',     meta.duration != null ? `${meta.duration}s` : null],
     ['Word count',   meta.word_count],
-    ['Tags',         p.tags.length ? p.tags.join(', ') : null],
     ['Uploaded at',  meta.uploaded_at ? new Date(meta.uploaded_at).toLocaleString() : null],
   ].filter(([,v]) => v != null);
 
@@ -602,6 +613,12 @@ function renderDetail(p) {
           <div class="meta-val pre">${escHtml(String(v))}</div>
         </div>`).join('')}
       </div></div>`;
+  }
+  if (p.tags.length) {
+    body += `<div class="detail-section">
+      <div class="detail-section-title">Tags</div>
+      <div class="td-tags">${p.tags.map(t=>`<span class="tag">${escHtml(t)}</span>`).join('')}</div>
+    </div>`;
   }
   const mediaLinks = [['Music',meta.music_url],['Narration',meta.audio_url],['Video',meta.video_url],['Thumbnail',meta.thumbnail_url],['YouTube Short',meta.youtube_url]].filter(([,v])=>v);
   if (mediaLinks.length) {

@@ -112,7 +112,6 @@ async def run_text_stage(project_id: str) -> None:
             "visual_guide": str(data.get("visual_guide", "")),
             "word_count":   word_count,
             "scenes":       scenes,
-            "tags":         tags,
         }
         if existing_summary:
             meta["summary"] = existing_summary
@@ -121,6 +120,8 @@ async def run_text_stage(project_id: str) -> None:
         async with factory() as session:
             p = await session.get(Project, project_id)
             p.set_metadata(meta)
+            if tags:
+                p.set_tags(tags)
             p.status = "scenes_ready"
             p.touch()
             await session.commit()

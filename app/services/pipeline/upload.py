@@ -163,7 +163,7 @@ async def run_upload_stage(project_id: str) -> None:
         if not video_path:
             raise ValueError("video_path missing from project metadata")
 
-        tags: list[str] = meta.get("tags", [])
+        tags: list[str] = project.get_tags()
         base_title: str = project.title
         _MAX_TITLE = 100
         remaining_tags = list(tags)

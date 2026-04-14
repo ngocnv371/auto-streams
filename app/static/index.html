@@ -68,6 +68,7 @@
   <div id="page-projects" class="page">
     <div class="toolbar">
       <input class="search-input" type="search" id="search-input" placeholder="Search by title…" oninput="debounceLoadProjects()" />
+      <select class="select-filter" id="tag-filter" onchange="loadProjects()"><option value="">All tags</option></select>
       <select class="select-filter" id="status-filter" onchange="loadProjects()">
         <option value="">All statuses</option>
         <option value="idea">idea</option>
