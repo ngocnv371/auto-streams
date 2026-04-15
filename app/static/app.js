@@ -595,7 +595,7 @@ function renderDetail(p) {
 
   let body = '';
   const videoFile = meta.video_path ? meta.video_path.replace(/\\/g,'/').split('/').pop() : null;
-  if (p.status === 'rendered' && videoFile) {
+  if (videoFile) {
     const videoSrc = `/api/projects/${p.id}/video/${encodeURIComponent(videoFile)}`;
     body += `<div class="detail-section">
       <div class="detail-section-title">Preview</div>
