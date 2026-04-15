@@ -15,6 +15,7 @@ from ._helpers import (
     _elapsed,
     _emit,
     _fail_project,
+    _format_project_slug,
     _kb,
     _load_project,
     _project_dir,
@@ -34,6 +35,8 @@ async def run_music_stage(project_id: str) -> None:
         if project is None:
             log.warning("music_stage: project %s not found", project_id)
             return
+        log.info("music_stage: project=%s", _format_project_slug(project))
+        _emit("Generating music for %s", _format_project_slug(project), project_id=project_id, stage="music")
 
         meta = project.get_metadata()
         if not meta.get("scenes"):
@@ -94,6 +97,8 @@ async def rerun_music(project_id: str) -> None:
         if project is None:
             log.warning("rerun_music: project %s not found", project_id)
             return
+        log.info("rerun_music: project=%s", _format_project_slug(project))
+        _emit("Re-generating music for %s", _format_project_slug(project), project_id=project_id, stage="music")
 
         meta = project.get_metadata()
         music_prompt = meta.get("music") or "calm ambient background music"

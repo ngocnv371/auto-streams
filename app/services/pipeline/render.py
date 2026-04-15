@@ -17,6 +17,7 @@ from ._helpers import (
     _elapsed,
     _emit,
     _fail_project,
+    _format_project_slug,
     _load_project,
     _project_dir,
 )
@@ -153,6 +154,8 @@ async def run_render_stage(project_id: str) -> None:
                 project_id, project.status if project else "not found",
             )
             return
+        log.info("render_stage: project=%s", _format_project_slug(project))
+        _emit("Rendering video for %s", _format_project_slug(project), project_id=project_id, stage="render")
 
         meta = project.get_metadata()
         scenes = meta.get("scenes", [])

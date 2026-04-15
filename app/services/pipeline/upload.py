@@ -16,7 +16,7 @@ from app.config import get_config
 from app.database import get_session_factory
 from app.models import Project
 
-from ._helpers import _elapsed, _fail_project, _load_project
+from ._helpers import _elapsed, _emit, _fail_project, _format_project_slug, _load_project
 
 log = logging.getLogger(__name__)
 
@@ -148,7 +148,10 @@ def _do_upload(video_path: str, title: str, description: str, visibility: str) -
 
 async def run_upload_stage(project_id: str) -> None:
     """Upload the final rendered video to YouTube Shorts.  rendered → uploaded."""
+    from app.events import inc_active, dec_active, emit
     log.info("upload_stage start project=%s", project_id)
+    inc_active()
+    _emit("Uploading to YouTube…", project_id=project_id, stage="upload")
     try:
         project = await _load_project(project_id)
         if project is None or project.status != "rendered":
@@ -157,6 +160,8 @@ async def run_upload_stage(project_id: str) -> None:
                 project_id, project.status if project else "not found",
             )
             return
+        log.info("upload_stage: project=%s", _format_project_slug(project))
+        _emit("Uploading video for %s", _format_project_slug(project), project_id=project_id, stage="upload")
 
         meta = project.get_metadata()
         video_path: str = meta.get("video_path", "")
@@ -217,7 +222,11 @@ async def run_upload_stage(project_id: str) -> None:
             await session.commit()
 
         log.info("upload_stage done project=%s url=%s", project_id, url)
+        _emit("Uploaded to YouTube", level="success", project_id=project_id, stage="upload")
+        emit("project_update", project_id=project_id, status="uploaded")
 
     except Exception:
         log.exception("upload_stage failed project=%s", project_id)
         await _fail_project(project_id, "upload_stage failed — see server logs")
+    finally:
+        dec_active()

@@ -15,6 +15,7 @@ from ._helpers import (
     _elapsed,
     _emit,
     _fail_project,
+    _format_project_slug,
     _kb,
     _load_project,
     _project_dir,
@@ -34,6 +35,8 @@ async def run_image_stage(project_id: str) -> None:
         if project is None:
             log.warning("image_stage: project %s not found", project_id)
             return
+        log.info("image_stage: project=%s", _format_project_slug(project))
+        _emit("Generating images for %s", _format_project_slug(project), project_id=project_id, stage="image")
 
         meta = project.get_metadata()
         scenes = meta.get("scenes", [])
@@ -103,6 +106,8 @@ async def run_scene_image(project_id: str, scene_index: int) -> None:
         if project is None:
             log.warning("scene_image: project %s not found", project_id)
             return
+        log.info("scene_image: project=%s scene=%d", _format_project_slug(project), scene_index)
+        _emit(f"Re-generating image for scene {scene_index + 1} of %s", _format_project_slug(project), project_id=project_id, stage="image")
 
         meta = project.get_metadata()
         scenes = meta.get("scenes", [])
@@ -160,6 +165,8 @@ async def run_all_scene_images(project_id: str) -> None:
         if project is None:
             log.warning("all_scene_images: project %s not found", project_id)
             return
+        log.info("all_scene_images: project=%s", _format_project_slug(project))
+        _emit("Re-generating all images for %s", _format_project_slug(project), project_id=project_id, stage="image")
 
         meta = project.get_metadata()
         scenes = meta.get("scenes", [])

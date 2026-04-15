@@ -37,6 +37,8 @@ def _kb(n_bytes: int) -> str:
 def _elapsed(t0: float) -> str:
     return f"{time.monotonic() - t0:.2f}s"
 
+def _format_project_slug(project: Project) -> str:
+    return f"{project.title} ({project.id[:8]})"
 
 def _parse_json_response(raw: str) -> dict:
     raw = raw.strip()
@@ -53,8 +55,10 @@ async def _load_project(project_id: str) -> Project | None:
         return await session.get(Project, project_id)
 
 
-def _emit(msg: str, level: str = "info", project_id: str | None = None, **extra) -> None:
+def _emit(msg: str, *args, level: str = "info", project_id: str | None = None, **extra) -> None:
     """Emit a pipeline activity event (best-effort)."""
+    if args:
+        msg = msg % args
     kw: dict = {"msg": msg, "level": level, **extra}
     if project_id:
         kw["project_id"] = project_id

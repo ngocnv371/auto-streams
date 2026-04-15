@@ -16,6 +16,7 @@ from ._helpers import (
     _elapsed,
     _emit,
     _fail_project,
+    _format_project_slug,
     _kb,
     _load_project,
     _project_dir,
@@ -44,7 +45,9 @@ async def run_tts_stage(project_id: str) -> None:
         if project is None:
             log.warning("tts_stage: project %s not found", project_id)
             return
-
+        log.info("tts_stage: project=%s", _format_project_slug(project))
+        _emit("Generating TTS audio for %s", _format_project_slug(project), project_id=project_id, stage="tts")
+        
         meta = project.get_metadata()
         scenes = meta.get("scenes", [])
         if not scenes:
@@ -135,6 +138,8 @@ async def run_scene_tts(project_id: str, scene_index: int) -> None:
         if project is None:
             log.warning("scene_tts: project %s not found", project_id)
             return
+        log.info("scene_tts: project=%s, scene=%d", _format_project_slug(project), scene_index)
+        _emit(f"Re-generating audio for scene {scene_index + 1} of %s", _format_project_slug(project), project_id=project_id, stage="tts")
 
         meta = project.get_metadata()
         scenes = meta.get("scenes", [])
@@ -205,6 +210,8 @@ async def run_all_scene_tts(project_id: str) -> None:
         if project is None:
             log.warning("all_scene_tts: project %s not found", project_id)
             return
+        log.info("all_scene_tts: project=%s", _format_project_slug(project))
+        _emit("Re-generating all audio %s", _format_project_slug(project), project_id=project_id, stage="tts")
 
         meta = project.get_metadata()
         scenes = meta.get("scenes", [])

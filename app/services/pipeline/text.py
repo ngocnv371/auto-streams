@@ -14,6 +14,7 @@ from ._helpers import (
     _SCENE_SYSTEM_PROMPT,
     _emit,
     _fail_project,
+    _format_project_slug,
     _load_project,
     _parse_json_response,
 )
@@ -32,6 +33,9 @@ async def run_text_stage(project_id: str) -> None:
         if project is None:
             log.warning("text_stage: project %s not found", project_id)
             return
+        log.info("text_stage: project=%s", _format_project_slug(project))
+        _emit("Generating script for %s", _format_project_slug(project), project_id=project_id, stage="text")
+        
         if project.status != "approved":
             log.warning(
                 "text_stage: project %s has status %r, expected 'approved'",
