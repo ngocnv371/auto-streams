@@ -90,6 +90,7 @@ def _do_upload(video_path: str, title: str, description: str, visibility: str) -
         # ── Description ──────────────────────────────────────────────
         # Re-fetch textboxes after interaction; description is last element
         time.sleep(10)
+        title_el.send_keys(Keys.ESCAPE) # close any autocomplete dropdowns to ensure description is visible
         textboxes = driver.find_elements(By.ID, _TEXTBOX_ID)
         description_el = textboxes[-1]
         description_el.click()
