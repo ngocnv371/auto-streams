@@ -5,8 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>auto-streams</title>
 <link rel="stylesheet" href="/static/style.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@19",
+        "react-dom/client": "https://esm.sh/react-dom@19/client",
+        "htm": "https://esm.sh/htm"
+      }
+    }
+  </script>
 </head>
-<body>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+<div id="root"></div>
 
 <!-- ══════════════════════ NAV ══════════════════════ -->
 <nav>
@@ -129,5 +140,6 @@
 <div id="toast"></div>
 
 <script src="/static/app.js"></script>
+<script src="/static/app2.js" type="module"></script>
 </body>
 </html>
