@@ -280,62 +280,116 @@ function ProjectDetailBody({ project }) {
 function ProjectsPage({ currentTopicId, showDetail }) {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
+  const [availableTags, setAvailableTags] = useState([]);
+
   useEffect(() => {
     if (!currentTopicId) {
       setProjects([]);
+      setAvailableTags([]);
       return;
     }
     setLoading(true);
     api("GET", `/projects?topic_id=${currentTopicId}&limit=200`)
-      .then((data) => setProjects(Array.isArray(data) ? data : []))
-      .catch(() => setProjects([]))
+      .then((data) => {
+        const arr = Array.isArray(data) ? data : [];
+        setProjects(arr);
+        // Build unique tag list
+        const tagSet = new Set();
+        arr.forEach((p) => {
+          if (Array.isArray(p.tags)) {
+            p.tags.forEach((t) => tagSet.add(t));
+          }
+        });
+        setAvailableTags(Array.from(tagSet).sort());
+      })
+      .catch(() => {
+        setProjects([]);
+        setAvailableTags([]);
+      })
       .finally(() => setLoading(false));
   }, [currentTopicId]);
+
+  // Filtered projects
+  const filteredProjects = projects.filter((p) => {
+    let statusOk = true;
+    let tagOk = true;
+    if (statusFilter) statusOk = p.status === statusFilter;
+    if (tagFilter) tagOk = Array.isArray(p.tags) && p.tags.includes(tagFilter);
+    return statusOk && tagOk;
+  });
+
+  // Build available status list from loaded projects
+  const availableStatuses = Array.from(
+    new Set(projects.map((p) => p.status))
+  ).filter(Boolean).sort();
+
   if (!currentTopicId)
     return html`<div class="empty">Select a topic to view projects.</div>`;
+
   if (loading) return html`<div class="empty">Loading…</div>`;
-  if (!projects || !Array.isArray(projects) || projects.length === 0)
-    return html`<div class="empty">No projects found.</div>`;
+
   return html`
-    <table>
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Status</th>
-          <th>Tags</th>
-          <th>Created</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${projects.map(
-          (p) =>
-            html`<tr onClick=${() => showDetail(p.id)}>
-              <td class="td-title">${escHtml(p.title)}</td>
-              <td>${badge(p.status)}</td>
-              <td class="td-tags">
-                ${p.tags && Array.isArray(p.tags) && p.tags.length
-                  ? p.tags.map(
-                      (t) => html`<span class="tag">${escHtml(t)}</span>`,
-                    )
-                  : html`<span class="text-muted">—</span>`}
-              </td>
-              <td class="td-date">${fmtDate(p.created_at)}</td>
-              <td class="td-actions">
-                <button
-                  class="btn-sm"
-                  onClick=${(e) => {
-                    e.stopPropagation();
-                    showDetail(p.id);
-                  }}
-                >
-                  Detail
-                </button>
-              </td>
-            </tr>`,
-        )}
-      </tbody>
-    </table>
+    <div class="filters-row" style=${{ marginBottom: "1em", display: "flex", gap: "1em", alignItems: "center" }}>
+      <label>Status:
+        <select value=${statusFilter} onChange=${e => setStatusFilter(e.target.value)}>
+          <option value="">All</option>
+          ${availableStatuses.map(s => html`<option value=${s}>${s.replace(/_/g, " ")}</option>`) }
+        </select>
+      </label>
+      <label>Tag:
+        <select value=${tagFilter} onChange=${e => setTagFilter(e.target.value)}>
+          <option value="">All</option>
+          ${availableTags.map(t => html`<option value=${t}>${t}</option>`) }
+        </select>
+      </label>
+      <button class="btn-sm" onClick=${() => { setStatusFilter(""); setTagFilter(""); }}>Clear Filters</button>
+    </div>
+
+    ${filteredProjects.length === 0
+      ? html`<div class="empty">No projects found.</div>`
+      : html`
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Status</th>
+              <th>Tags</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredProjects.map(
+              (p) =>
+                html`<tr onClick=${() => showDetail(p.id)}>
+                  <td class="td-title">${escHtml(p.title)}</td>
+                  <td>${badge(p.status)}</td>
+                  <td class="td-tags">
+                    ${p.tags && Array.isArray(p.tags) && p.tags.length
+                      ? p.tags.map(
+                          (t) => html`<span class="tag">${escHtml(t)}</span>`,
+                        )
+                      : html`<span class="text-muted">—</span>`}
+                  </td>
+                  <td class="td-date">${fmtDate(p.created_at)}</td>
+                  <td class="td-actions">
+                    <button
+                      class="btn-sm"
+                      onClick=${(e) => {
+                        e.stopPropagation();
+                        showDetail(p.id);
+                      }}
+                    >
+                      Detail
+                    </button>
+                  </td>
+                </tr>`,
+            )}
+          </tbody>
+        </table>
+      `}
   `;
 }
 
