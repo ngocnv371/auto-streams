@@ -201,7 +201,9 @@ function ProjectDetailModal({ projectId, onClose }) {
       .catch(() => setProject(null))
       .finally(() => setLoading(false));
   }, [projectId]);
+
   if (!projectId) return null;
+
   return html`
     <div class="detail-overlay" id="detail-overlay" onClick=${onClose}></div>
     <div class="detail-panel open" id="detail-panel">
@@ -211,11 +213,11 @@ function ProjectDetailModal({ projectId, onClose }) {
             ${project ? project.title : ""}
           </div>
           <div class="detail-meta" id="dp-meta">
-            ${project ? badge(project.status) : ""} &nbsp;·&nbsp;
-            <span class="text-muted"
-              >${project ? escHtml(project.id) : ""}</span
-            >
-            &nbsp;·&nbsp; ${project ? fmtDate(project.created_at) : ""}
+            ${project ? badge(project.status) : ""}
+            <span class="text-muted">
+              ${project ? escHtml(project.id) : ""}
+            </span>
+            ${" "} - ${project ? fmtDate(project.created_at) : ""}
           </div>
         </div>
         <button class="detail-close" onClick=${onClose}>✕</button>
@@ -249,6 +251,8 @@ function ProjectDetailBody({ project }) {
       meta.uploaded_at ? new Date(meta.uploaded_at).toLocaleString() : null,
     ],
   ].filter(([, v]) => v != null);
+  const scenes = meta.scenes || [];
+
   return html`
     <div>
       ${metaFields.length
@@ -265,13 +269,17 @@ function ProjectDetailBody({ project }) {
       ${project.tags && Array.isArray(project.tags) && project.tags.length
         ? html`<div class="detail-section">
             <div class="detail-section-title">Tags</div>
-            <div>
+            <div class="flex gap-1 flex-wrap">
               ${project.tags.map(
-                (t) => html`<span class="tag">${escHtml(t)}</span>`,
+                (t) =>
+                  html`<span class="px-2 py-1 bg-gray-200 rounded"
+                    >${escHtml(t)}</span
+                  >`,
               )}
             </div>
           </div>`
         : null}
+      <${ScenesSection} projectId=${project.id} scenes=${scenes} />
     </div>
   `;
 }
@@ -321,9 +329,9 @@ function ProjectsPage({ currentTopicId, showDetail }) {
   });
 
   // Build available status list from loaded projects
-  const availableStatuses = Array.from(
-    new Set(projects.map((p) => p.status))
-  ).filter(Boolean).sort();
+  const availableStatuses = Array.from(new Set(projects.map((p) => p.status)))
+    .filter(Boolean)
+    .sort();
 
   if (!currentTopicId)
     return html`<div class="empty">Select a topic to view projects.</div>`;
@@ -331,65 +339,147 @@ function ProjectsPage({ currentTopicId, showDetail }) {
   if (loading) return html`<div class="empty">Loading…</div>`;
 
   return html`
-    <div class="filters-row" style=${{ marginBottom: "1em", display: "flex", gap: "1em", alignItems: "center" }}>
-      <label>Status:
-        <select value=${statusFilter} onChange=${e => setStatusFilter(e.target.value)}>
+    <div
+      class="filters-row"
+      style=${{
+        marginBottom: "1em",
+        display: "flex",
+        gap: "1em",
+        alignItems: "center",
+      }}
+    >
+      <label
+        >Status:
+        <select
+          value=${statusFilter}
+          onChange=${(e) => setStatusFilter(e.target.value)}
+        >
           <option value="">All</option>
-          ${availableStatuses.map(s => html`<option value=${s}>${s.replace(/_/g, " ")}</option>`) }
+          ${availableStatuses.map(
+            (s) => html`<option value=${s}>${s.replace(/_/g, " ")}</option>`,
+          )}
         </select>
       </label>
-      <label>Tag:
-        <select value=${tagFilter} onChange=${e => setTagFilter(e.target.value)}>
+      <label
+        >Tag:
+        <select
+          value=${tagFilter}
+          onChange=${(e) => setTagFilter(e.target.value)}
+        >
           <option value="">All</option>
-          ${availableTags.map(t => html`<option value=${t}>${t}</option>`) }
+          ${availableTags.map((t) => html`<option value=${t}>${t}</option>`)}
         </select>
       </label>
-      <button class="btn-sm" onClick=${() => { setStatusFilter(""); setTagFilter(""); }}>Clear Filters</button>
+      <button
+        class="btn-sm"
+        onClick=${() => {
+          setStatusFilter("");
+          setTagFilter("");
+        }}
+      >
+        Clear Filters
+      </button>
     </div>
 
     ${filteredProjects.length === 0
       ? html`<div class="empty">No projects found.</div>`
       : html`
-        <table>
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Status</th>
-              <th>Tags</th>
-              <th>Created</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${filteredProjects.map(
-              (p) =>
-                html`<tr onClick=${() => showDetail(p.id)}>
-                  <td class="td-title">${escHtml(p.title)}</td>
-                  <td>${badge(p.status)}</td>
-                  <td class="td-tags">
-                    ${p.tags && Array.isArray(p.tags) && p.tags.length
-                      ? p.tags.map(
-                          (t) => html`<span class="tag">${escHtml(t)}</span>`,
-                        )
-                      : html`<span class="text-muted">—</span>`}
-                  </td>
-                  <td class="td-date">${fmtDate(p.created_at)}</td>
-                  <td class="td-actions">
-                    <button
-                      class="btn-sm"
-                      onClick=${(e) => {
-                        e.stopPropagation();
-                        showDetail(p.id);
-                      }}
-                    >
-                      Detail
-                    </button>
-                  </td>
-                </tr>`,
-            )}
-          </tbody>
-        </table>
-      `}
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Tags</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredProjects.map(
+                (p) =>
+                  html`<tr onClick=${() => showDetail(p.id)}>
+                    <td class="td-title">${escHtml(p.title)}</td>
+                    <td>${badge(p.status)}</td>
+                    <td class="flex gap-1">
+                      ${p.tags && Array.isArray(p.tags) && p.tags.length
+                        ? p.tags.map(
+                            (t) =>
+                              html`<span class="px-2 py-1 bg-gray-200 rounded"
+                                >${escHtml(t)}</span
+                              >`,
+                          )
+                        : html`<span class="text-muted">—</span>`}
+                    </td>
+                    <td class="td-date">${fmtDate(p.created_at)}</td>
+                    <td class="td-actions">
+                      <button
+                        class="btn-sm"
+                        onClick=${(e) => {
+                          e.stopPropagation();
+                          showDetail(p.id);
+                        }}
+                      >
+                        Detail
+                      </button>
+                    </td>
+                  </tr>`,
+              )}
+            </tbody>
+          </table>
+        `}
+  `;
+}
+
+const fnFromPath = (path) =>
+  path ? path.replace(/\\/g, "/").split("/").pop() : null;
+
+// Scenes Section
+function ScenesSection({ projectId, scenes }) {
+  if (!Array.isArray(scenes) || scenes.length === 0) {
+    return html`<div class="scenes-section empty">No scenes available.</div>`;
+  }
+  return html`
+    <div class="scenes-section">
+      <div class="scenes-title">Scenes</div>
+      <div class="scenes-list">
+        ${scenes.map(
+          (scene, idx) => html`
+            <div class="scene-card" key=${idx}>
+              <div class="scene-thumb-wrap">
+                <img
+                  class="scene-thumb"
+                  src=${`/api/projects/${projectId}/image/${fnFromPath(scene.image_path)}`}
+                  alt="Scene ${idx + 1} thumbnail"
+                  loading="lazy"
+                  width="128"
+                  height="72"
+                  onError=${(e) => (e.target.style.display = "none")}
+                />
+              </div>
+              <div class="scene-info">
+                <div class="scene-voiceover">${escHtml(scene.voiceover)}</div>
+                <div class="scene-prompt">
+                  <b>Prompt:</b> ${escHtml(scene.image_prompt)}
+                </div>
+                <div class="scene-meta">
+                  <span
+                    ><b>Start:</b> ${scene.audio_start?.toFixed(2) ??
+                    "-"}s</span
+                  >
+                  <span
+                    ><b>End:</b> ${scene.audio_end?.toFixed(2) ?? "-"}s</span
+                  >
+                  <span
+                    ><b>Duration:</b> ${scene.duration?.toFixed(2) ??
+                    "-"}s</span
+                  >
+                </div>
+              </div>
+            </div>
+          `,
+        )}
+      </div>
+    </div>
   `;
 }
 
@@ -610,7 +700,7 @@ function App() {
       >
         <${ProjectsPage}
           currentTopicId=${currentTopicId}
-          showDetail=${id => setDetailProjectId(id)}
+          showDetail=${(id) => setDetailProjectId(id)}
         />
       </div>
       <${ProjectDetailModal}
