@@ -12,7 +12,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.options import Options
 
-from app.config import get_config
+from app.config import YouTubeConfig, get_config
 from app.database import get_session_factory
 from app.models import Project
 
@@ -39,12 +39,14 @@ _VISIBILITY_INDEX: dict[str, int] = {
 
 # ── Browser helpers ──────────────────────────────────────────────────────────
 
-def _build_driver(profile_path: str) -> webdriver.Firefox:
+def _build_driver(youtube_config: YouTubeConfig) -> webdriver.Firefox:
     """Return a Firefox WebDriver, optionally using a pre-logged-in profile."""
     options = Options()
+    profile_path = youtube_config.firefox_profile
     if profile_path:
         options.add_argument("-profile")
         options.add_argument(os.path.abspath(profile_path))
+    options.headless = youtube_config.headless
     return webdriver.Firefox(options=options)
 
 
@@ -59,7 +61,7 @@ def _do_upload(video_path: str, title: str, description: str, visibility: str) -
     cfg = get_config()
     profile_path: str = cfg.youtube.firefox_profile
 
-    driver = _build_driver(profile_path)
+    driver = _build_driver(cfg.youtube)
     try:
         # ── Resolve channel ID ───────────────────────────────────────
         log.info("upload: navigating to YouTube Studio")
@@ -204,6 +206,12 @@ async def run_upload_stage(project_id: str) -> None:
         factory = get_session_factory()
         async with factory() as session:
             p = await session.get(Project, project_id)
+            if (p is None) or (p.status != "rendered"):
+                log.warning(
+                    "upload_stage: project %s not in 'rendered' status at completion (status=%s)",
+                    project_id, p.status if p else "not found",
+                )
+                return
             m = p.get_metadata()
             m["uploaded_at"] = uploaded_at
             if url:
@@ -218,6 +226,12 @@ async def run_upload_stage(project_id: str) -> None:
         factory = get_session_factory()
         async with factory() as session:
             p = await session.get(Project, project_id)
+            if (p is None) or (p.status != "rendered"):
+                log.warning(
+                    "upload_stage: project %s not in 'rendered' status at completion (status=%s)",
+                    project_id, p.status if p else "not found",
+                )
+                return
             p.status = "uploaded"
             p.touch()
             await session.commit()

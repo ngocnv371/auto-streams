@@ -53,3 +53,4 @@ youtube:
   firefox_profile: "C:\\Users\\Ngoc\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\xxxxxxxx.Profile 1"
   # Visibility for uploaded videos: public | unlisted | private
   visibility: unlisted
+  headless: true   # Whether to run the browser in headless mode (no GUI). Set to false for debugging.
