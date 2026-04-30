@@ -537,7 +537,7 @@ async function runQueue(queue) {
   }
   try {
     const params = new URLSearchParams({ queue });
-    if (currentTopicId) params.set("topic_id", currentTopicId);
+    if (currentTopicId && currentTopicId !== 'all') params.set("topic_id", currentTopicId);
     const res = await api("POST", `/dashboard/run-queue?${params}`);
     toast(
       `${res.queued} project${res.queued !== 1 ? "s" : ""} queued for ${queue.replace(/_/g, " ")}`,
