@@ -123,6 +123,9 @@ async def run_text_stage(project_id: str) -> None:
         factory = get_session_factory()
         async with factory() as session:
             p = await session.get(Project, project_id)
+            if (p is None):
+                log.warning("scene_image: project %s disappeared during processing", project_id)
+                return
             p.set_metadata(meta)
             if tags:
                 p.set_tags(tags)

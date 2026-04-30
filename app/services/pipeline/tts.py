@@ -107,6 +107,9 @@ async def run_tts_stage(project_id: str) -> None:
         factory = get_session_factory()
         async with factory() as session:
             p = await session.get(Project, project_id)
+            if (p is None):
+                log.warning("scene_image: project %s disappeared during processing", project_id)
+                return
             m = p.get_metadata()
             m["scenes"] = updated_scenes
             m["duration"] = duration
@@ -171,6 +174,9 @@ async def run_scene_tts(project_id: str, scene_index: int) -> None:
         factory = get_session_factory()
         async with factory() as session:
             p = await session.get(Project, project_id)
+            if (p is None):
+                log.warning("scene_image: project %s disappeared during processing", project_id)
+                return
             m = p.get_metadata()
             m["scenes"][scene_index] = {
                 **m["scenes"][scene_index],
@@ -258,6 +264,9 @@ async def run_all_scene_tts(project_id: str) -> None:
         factory = get_session_factory()
         async with factory() as session:
             p = await session.get(Project, project_id)
+            if (p is None):
+                log.warning("scene_image: project %s disappeared during processing", project_id)
+                return
             m = p.get_metadata()
             m["scenes"] = updated_scenes
             m["duration"] = duration

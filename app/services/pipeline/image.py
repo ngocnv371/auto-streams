@@ -74,12 +74,14 @@ async def run_image_stage(project_id: str) -> None:
         factory = get_session_factory()
         async with factory() as session:
             p = await session.get(Project, project_id)
+            if (p is None):
+                log.warning("scene_image: project %s disappeared during processing", project_id)
+                return
             m = p.get_metadata()
             m["scenes"] = updated_scenes
             m["images_done"] = True
             p.set_metadata(m)
-            if m.get("music_done"):
-                p.status = "media_ready"
+            p.status = "images_ready"
             p.touch()
             await session.commit()
             new_status = p.status
@@ -137,6 +139,9 @@ async def run_scene_image(project_id: str, scene_index: int) -> None:
         factory = get_session_factory()
         async with factory() as session:
             p = await session.get(Project, project_id)
+            if (p is None):
+                log.warning("scene_image: project %s disappeared during processing", project_id)
+                return
             m = p.get_metadata()
             m["scenes"][scene_index] = {**m["scenes"][scene_index], "image_path": image_path}
             p.set_metadata(m)
@@ -198,6 +203,9 @@ async def run_all_scene_images(project_id: str) -> None:
         factory = get_session_factory()
         async with factory() as session:
             p = await session.get(Project, project_id)
+            if (p is None):
+                log.warning("scene_image: project %s disappeared during processing", project_id)
+                return
             m = p.get_metadata()
             m["scenes"] = updated_scenes
             p.set_metadata(m)

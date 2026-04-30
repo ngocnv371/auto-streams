@@ -234,6 +234,9 @@ async def run_render_stage(project_id: str) -> None:
         factory = get_session_factory()
         async with factory() as session:
             p = await session.get(Project, project_id)
+            if (p is None):
+                log.warning("scene_image: project %s disappeared during processing", project_id)
+                return
             m = p.get_metadata()
             m["scenes"] = updated_scenes
             p.set_metadata(m)
@@ -262,6 +265,9 @@ async def run_render_stage(project_id: str) -> None:
         factory = get_session_factory()
         async with factory() as session:
             p = await session.get(Project, project_id)
+            if (p is None):
+                log.warning("scene_image: project %s disappeared during processing", project_id)
+                return
             m = p.get_metadata()
             m["video_path"] = final_path
             p.set_metadata(m)
