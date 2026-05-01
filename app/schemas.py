@@ -66,3 +66,17 @@ class DashboardOut(BaseModel):
     status_counts: dict[str, int]
     queue_counts: dict[str, int]
     total: int
+
+
+class BestShortsOut(BaseModel):
+    url: str
+    title: str
+    views: int
+    project_id: str | None = None
+    status: str | None = None
+    created_at: Optional[datetime] = None
+    # Add more fields as needed
+
+
+class BestShortsTableOut(BaseModel):
+    shorts: list[BestShortsOut]

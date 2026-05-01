@@ -276,6 +276,25 @@ main { flex: 1; padding: 1.5rem; max-width: 1400px; width: 100%; margin: 0 auto;
 
 h2 { font-size: .85rem; font-weight: 600; margin-bottom: .85rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.section-sub {
+  color: var(--muted);
+  font-size: .9rem;
+  max-width: 720px;
+}
+
+.best-shorts-summary {
+  margin-bottom: 1rem;
+}
+
 /* ── Projects table ── */
 .toolbar { display: flex; gap: .75rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
 .search-input, .select-filter {
@@ -309,8 +328,11 @@ tbody td { padding: .65rem .75rem; vertical-align: middle; }
 .td-title { font-weight: 500; max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .td-date { color: var(--muted); font-size: .8rem; white-space: nowrap; }
 .td-tags { display: flex; gap: .3rem; flex-wrap: wrap; }
+.td-rank, .td-views, .td-link { white-space: nowrap; }
 .tag { background: rgba(59,130,246,.15); color: var(--primary); border: 1px solid rgba(59,130,246,.3); padding: .1rem .45rem; border-radius: 4px; font-size: .72rem; }
 .td-actions { display: flex; gap: .4rem; }
+.table-link { color: var(--primary); text-decoration: none; }
+.table-link:hover { text-decoration: underline; }
 .btn-sm {
   padding: .2rem .55rem;
   border-radius: 5px;

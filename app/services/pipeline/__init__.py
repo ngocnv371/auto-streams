@@ -14,6 +14,7 @@ Per-asset reruns (no status change):
 """
 
 from .full import run_full_pipeline
+from .dashboard_shorts import fetch_best_shorts
 from .image import run_all_scene_images, run_image_stage, run_scene_image
 from .music import rerun_music, run_music_stage
 from .render import run_render_stage
@@ -34,4 +35,5 @@ __all__ = [
     "run_render_stage",
     "run_full_pipeline",
     "run_upload_stage",
+    "fetch_best_shorts",
 ]

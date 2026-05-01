@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Annotated
+from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from typing import Optional
-
 from app.database import get_session
 from app.models import Project, PROJECT_STATUSES
-from app.schemas import DashboardOut
+from app.schemas import DashboardOut, BestShortsTableOut, BestShortsOut
 from app.services.pipeline import (
+    fetch_best_shorts,
     run_text_stage,
     run_tts_stage,
     run_music_stage,
@@ -98,3 +99,41 @@ async def _process_pipeline_stub(project_id: str, queue: str) -> None:
     handler = _QUEUE_HANDLERS.get(queue)
     if handler:
         await handler(project_id)
+
+
+@router.get("/best-shorts", response_model=BestShortsTableOut)
+async def get_best_shorts(
+    session: Session,
+    max_results: int = Query(50, ge=1, le=50),
+    topic_id: Optional[str] = Query(None),
+):
+    rows = await asyncio.to_thread(fetch_best_shorts, max_results)
+
+    stmt = select(Project).where(Project.status == "uploaded")
+    if topic_id:
+        stmt = stmt.where(Project.topic_id == topic_id)
+    result = await session.execute(stmt)
+    projects = result.scalars().all()
+    url_to_project: dict[str, Project] = {}
+    for project in projects:
+        meta = project.get_metadata()
+        for key in ("youtube_url", "video_url"):
+            video_url = meta.get(key)
+            if video_url:
+                url_to_project[video_url.split("?")[0]] = project
+
+    shorts: list[BestShortsOut] = []
+    for row in rows:
+        url = str(row.get("url", ""))
+        project = url_to_project.get(url)
+        raw_views = row.get("views", 0)
+        views = raw_views if isinstance(raw_views, int) else 0
+        shorts.append(BestShortsOut(
+            url=url,
+            title=project.title if project else str(row.get("title", "")),
+            views=views,
+            project_id=project.id if project else None,
+            status=project.status if project else None,
+            created_at=project.created_at if project else None,
+        ))
+    return BestShortsTableOut(shorts=shorts)

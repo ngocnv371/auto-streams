@@ -397,6 +397,66 @@ async function loadDashboard() {
   }
 }
 
+async function loadBestShorts() {
+  if (!currentTopicId) return;
+
+  const wrap = $("best-shorts-wrap");
+  wrap.innerHTML = '<div class="empty">Loading best performing shorts…</div>';
+
+  try {
+    const params = new URLSearchParams({ max_results: "50" });
+    if (currentTopicId !== "all") params.set("topic_id", currentTopicId);
+
+    const data = await api("GET", `/dashboard/best-shorts?${params}`);
+    const shorts = data.shorts || [];
+    const matched = shorts.filter((item) => item.project_id).length;
+
+    $("bs-total").textContent = shorts.length;
+    $("bs-matched").textContent = matched;
+    $("bs-unmatched").textContent = shorts.length - matched;
+
+    if (!shorts.length) {
+      wrap.innerHTML = '<div class="empty">No Shorts found in YouTube Studio.</div>';
+      return;
+    }
+
+    wrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Title</th>
+            <th>Views</th>
+            <th>Project</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Link</th>
+          </tr>
+        </thead>
+        <tbody>${shorts
+          .map(
+            (item, index) => `
+          <tr ${item.project_id ? `onclick="openDetail('${item.project_id}')"` : ""}>
+            <td class="td-rank">${index + 1}</td>
+            <td class="td-title">${escHtml(item.title || "Untitled short")}</td>
+            <td class="td-views">${Number(item.views || 0).toLocaleString()}</td>
+            <td class="td-title">${item.project_id ? escHtml(item.project_id.slice(0, 8)) : '<span class="text-muted">Not matched</span>'}</td>
+            <td>${item.status ? badge(item.status) : '<span class="text-muted">—</span>'}</td>
+            <td class="td-date">${fmtDate(item.created_at)}</td>
+            <td class="td-link" onclick="event.stopPropagation()"><a class="table-link" href="${escHtml(item.url)}" target="_blank" rel="noreferrer">Open</a></td>
+          </tr>`,
+          )
+          .join("")}
+        </tbody>
+      </table>`;
+  } catch (e) {
+    $("bs-total").textContent = "—";
+    $("bs-matched").textContent = "—";
+    $("bs-unmatched").textContent = "—";
+    wrap.innerHTML = `<div class="empty">Error: ${escHtml(e.message)}</div>`;
+  }
+}
+
 // ═══════════════════════════════════════════════════════════
 //  Projects
 // ═══════════════════════════════════════════════════════════
