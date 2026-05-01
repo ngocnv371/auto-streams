@@ -295,6 +295,47 @@ h2 { font-size: .85rem; font-weight: 600; margin-bottom: .85rem; color: var(--mu
   margin-bottom: 1rem;
 }
 
+.best-shorts-analysis {
+  margin-bottom: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 8px;
+  padding: .85rem .95rem;
+}
+
+.best-shorts-analysis-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .45rem;
+}
+
+.best-shorts-analysis-title {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 600;
+}
+
+.best-shorts-analysis-badge {
+  font-size: .7rem;
+  color: var(--primary);
+  background: rgba(59,130,246,.12);
+  border: 1px solid rgba(59,130,246,.25);
+  border-radius: 999px;
+  padding: .05rem .45rem;
+}
+
+.best-shorts-analysis-body {
+  color: var(--text);
+  white-space: pre-wrap;
+  line-height: 1.45;
+  font-size: .88rem;
+}
+
 /* ── Projects table ── */
 .toolbar { display: flex; gap: .75rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
 .search-input, .select-filter {

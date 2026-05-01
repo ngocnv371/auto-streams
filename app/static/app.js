@@ -174,6 +174,169 @@ let currentTopicText = localStorage.getItem("as_topic_text") || null;
 let allTopics = [];
 let activePage = "splash";
 let selectedCount = 5;
+let _bestShortsData = [];
+
+const BEST_SHORTS_CACHE_PREFIX = "as_best_shorts_v1";
+
+function bestShortsCacheKey() {
+  return `${BEST_SHORTS_CACHE_PREFIX}:${currentTopicId || "all"}`;
+}
+
+function saveBestShortsCache(shorts) {
+  const payload = {
+    topic_id: currentTopicId || "all",
+    fetched_at: new Date().toISOString(),
+    shorts,
+  };
+  localStorage.setItem(bestShortsCacheKey(), JSON.stringify(payload));
+}
+
+function readBestShortsCache() {
+  const raw = localStorage.getItem(bestShortsCacheKey());
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.shorts)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function setBestShortsSummary(shorts) {
+  const matched = shorts.filter((item) => item.project_id).length;
+  $("bs-total").textContent = shorts.length;
+  $("bs-matched").textContent = matched;
+  $("bs-unmatched").textContent = shorts.length - matched;
+}
+
+function clearBestShortsAnalysis() {
+  const el = $("best-shorts-analysis");
+  if (el) el.innerHTML = "";
+}
+
+function renderBestShortsAnalysis(text, source = "AI") {
+  const el = $("best-shorts-analysis");
+  if (!el) return;
+  el.innerHTML = `
+    <div class="best-shorts-analysis">
+      <div class="best-shorts-analysis-head">
+        <div class="best-shorts-analysis-title">Shorts Analysis</div>
+        <div class="best-shorts-analysis-badge">${escHtml(source)}</div>
+      </div>
+      <div class="best-shorts-analysis-body">${escHtml(text || "No analysis returned.")}</div>
+    </div>`;
+}
+
+function renderBestShortsTable(shorts) {
+  const wrap = $("best-shorts-wrap");
+  if (!wrap) return;
+
+  if (!shorts.length) {
+    wrap.innerHTML = '<div class="empty">No Shorts found in YouTube Studio.</div>';
+    return;
+  }
+
+  wrap.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Title</th>
+          <th>Views</th>
+          <th>Project</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Link</th>
+        </tr>
+      </thead>
+      <tbody>${shorts
+        .map(
+          (item, index) => `
+        <tr ${item.project_id ? `onclick="openDetail('${item.project_id}')"` : ""}>
+          <td class="td-rank">${index + 1}</td>
+          <td class="td-title">${escHtml(item.title || "Untitled short")}</td>
+          <td class="td-views">${Number(item.views || 0).toLocaleString()}</td>
+          <td class="td-title">${item.project_id ? escHtml(item.project_id.slice(0, 8)) : '<span class="text-muted">Not matched</span>'}</td>
+          <td>${item.status ? badge(item.status) : '<span class="text-muted">—</span>'}</td>
+          <td class="td-date">${fmtDate(item.created_at)}</td>
+          <td class="td-link" onclick="event.stopPropagation()"><a class="table-link" href="${escHtml(item.url)}" target="_blank" rel="noreferrer">Open</a></td>
+        </tr>`,
+        )
+        .join("")}
+      </tbody>
+    </table>`;
+}
+
+function hydrateBestShortsFromCache() {
+  const cached = readBestShortsCache();
+  if (!cached) {
+    _bestShortsData = [];
+    return false;
+  }
+  _bestShortsData = cached.shorts;
+  setBestShortsSummary(cached.shorts);
+  renderBestShortsTable(cached.shorts);
+  return true;
+}
+
+function buildLocalBestShortsAnalysis(shorts) {
+  if (!shorts.length) return "No shorts available to analyze.";
+
+  const sorted = [...shorts].sort((a, b) => (b.views || 0) - (a.views || 0));
+  const top = sorted.slice(0, Math.min(5, sorted.length));
+  const totalViews = sorted.reduce((acc, item) => acc + Number(item.views || 0), 0);
+  const avgViews = Math.round(totalViews / sorted.length);
+  const matched = sorted.filter((item) => item.project_id).length;
+
+  const lines = [
+    `Total shorts: ${sorted.length}`,
+    `Average views: ${avgViews.toLocaleString()}`,
+    `Matched to project: ${matched}/${sorted.length}`,
+    "",
+    "Top performers:",
+    ...top.map((item, idx) => `${idx + 1}. ${item.title || "Untitled short"} (${Number(item.views || 0).toLocaleString()} views)`),
+  ];
+  return lines.join("\n");
+}
+
+async function analyzeBestShorts() {
+  const analyzeBtn = $("btn-best-shorts-analyze");
+  const shorts = _bestShortsData.length
+    ? _bestShortsData
+    : readBestShortsCache()?.shorts || [];
+
+  if (!shorts.length) {
+    toast("Fetch data first so Analyze has content", "error");
+    return;
+  }
+
+  if (analyzeBtn) {
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = "Analyzing…";
+  }
+
+  try {
+    const payload = {
+      shorts: shorts.slice(0, 25).map((item) => ({
+        title: item.title || "Untitled short",
+        views: Number(item.views || 0),
+      })),
+    };
+    const res = await api("POST", "/dashboard/best-shorts/analyze", payload);
+    if (!res?.analysis) throw new Error("No analysis response");
+    renderBestShortsAnalysis(res.analysis, "AI");
+  } catch {
+    const localAnalysis = buildLocalBestShortsAnalysis(shorts);
+    renderBestShortsAnalysis(localAnalysis, "Local summary");
+    toast("AI analysis unavailable. Showing local summary.", "error");
+  } finally {
+    if (analyzeBtn) {
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = "Analyze";
+    }
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 //  Topic workspace
@@ -329,11 +492,16 @@ function showPage(id, tab) {
   switchPage(id);
   if (id === "dashboard") loadDashboard();
   if (id === "projects") loadProjects();
+  if (id === "best-shorts") {
+    clearBestShortsAnalysis();
+    hydrateBestShortsFromCache();
+  }
 }
 
 function refreshCurrentPage() {
   if (activePage === "dashboard") loadDashboard();
   if (activePage === "projects") loadProjects();
+  if (activePage === "best-shorts") hydrateBestShortsFromCache();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -402,6 +570,7 @@ async function loadBestShorts() {
 
   const wrap = $("best-shorts-wrap");
   wrap.innerHTML = '<div class="empty">Loading best performing shorts…</div>';
+  clearBestShortsAnalysis();
 
   try {
     const params = new URLSearchParams({ max_results: "50" });
@@ -409,51 +578,20 @@ async function loadBestShorts() {
 
     const data = await api("GET", `/dashboard/best-shorts?${params}`);
     const shorts = data.shorts || [];
-    const matched = shorts.filter((item) => item.project_id).length;
-
-    $("bs-total").textContent = shorts.length;
-    $("bs-matched").textContent = matched;
-    $("bs-unmatched").textContent = shorts.length - matched;
-
-    if (!shorts.length) {
-      wrap.innerHTML = '<div class="empty">No Shorts found in YouTube Studio.</div>';
+    _bestShortsData = shorts;
+    saveBestShortsCache(shorts);
+    setBestShortsSummary(shorts);
+    renderBestShortsTable(shorts);
+  } catch (e) {
+    if (!hydrateBestShortsFromCache()) {
+      _bestShortsData = [];
+      $("bs-total").textContent = "—";
+      $("bs-matched").textContent = "—";
+      $("bs-unmatched").textContent = "—";
+      wrap.innerHTML = `<div class="empty">Error: ${escHtml(e.message)}</div>`;
       return;
     }
-
-    wrap.innerHTML = `
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Title</th>
-            <th>Views</th>
-            <th>Project</th>
-            <th>Status</th>
-            <th>Created</th>
-            <th>Link</th>
-          </tr>
-        </thead>
-        <tbody>${shorts
-          .map(
-            (item, index) => `
-          <tr ${item.project_id ? `onclick="openDetail('${item.project_id}')"` : ""}>
-            <td class="td-rank">${index + 1}</td>
-            <td class="td-title">${escHtml(item.title || "Untitled short")}</td>
-            <td class="td-views">${Number(item.views || 0).toLocaleString()}</td>
-            <td class="td-title">${item.project_id ? escHtml(item.project_id.slice(0, 8)) : '<span class="text-muted">Not matched</span>'}</td>
-            <td>${item.status ? badge(item.status) : '<span class="text-muted">—</span>'}</td>
-            <td class="td-date">${fmtDate(item.created_at)}</td>
-            <td class="td-link" onclick="event.stopPropagation()"><a class="table-link" href="${escHtml(item.url)}" target="_blank" rel="noreferrer">Open</a></td>
-          </tr>`,
-          )
-          .join("")}
-        </tbody>
-      </table>`;
-  } catch (e) {
-    $("bs-total").textContent = "—";
-    $("bs-matched").textContent = "—";
-    $("bs-unmatched").textContent = "—";
-    wrap.innerHTML = `<div class="empty">Error: ${escHtml(e.message)}</div>`;
+    toast("Failed to refresh shorts. Loaded cached data.", "error");
   }
 }
 

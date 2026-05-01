@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Annotated
 from typing import Optional
 
@@ -10,7 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
 from app.models import Project, PROJECT_STATUSES
-from app.schemas import DashboardOut, BestShortsTableOut, BestShortsOut
+from app.schemas import (
+    DashboardOut,
+    BestShortsTableOut,
+    BestShortsOut,
+    BestShortsAnalyzeRequest,
+    BestShortsAnalyzeOut,
+)
+from app.services.generation.service import GenerationService
 from app.services.pipeline import (
     fetch_best_shorts,
     run_text_stage,
@@ -32,6 +40,23 @@ _QUEUE_STATUS_MAP: dict[str, list[str]] = {
     "image_queue":  ["music_ready"],
     "render_queue": ["images_ready"],
 }
+
+_BEST_SHORTS_ANALYSIS_SYSTEM_PROMPT = (
+    "You are a YouTube Shorts strategist. Analyze top shorts using only the "
+    "provided title + views data and return concise, actionable guidance."
+)
+
+
+def _build_best_shorts_analysis_prompt(shorts: list[dict[str, object]]) -> str:
+    return (
+        "Analyze this ranked list of YouTube Shorts (title + views).\n"
+        "Return plain text with this structure:\n"
+        "1) Key patterns (3 bullets)\n"
+        "2) Content angles to test next (5 bullets)\n"
+        "3) Title formula recommendations (3 bullets)\n\n"
+        "Shorts JSON:\n"
+        f"{json.dumps(shorts, ensure_ascii=True)}"
+    )
 
 
 @router.get("", response_model=DashboardOut)
@@ -137,3 +162,34 @@ async def get_best_shorts(
             created_at=project.created_at if project else None,
         ))
     return BestShortsTableOut(shorts=shorts)
+
+
+@router.post("/best-shorts/analyze", response_model=BestShortsAnalyzeOut)
+async def analyze_best_shorts(body: BestShortsAnalyzeRequest):
+    shorts = body.shorts[:25]
+    if not shorts:
+        raise HTTPException(400, "No shorts provided")
+
+    payload = [
+        {
+            "title": item.title,
+            "views": max(0, item.views),
+        }
+        for item in shorts
+    ]
+    prompt = _build_best_shorts_analysis_prompt(payload)
+
+    svc = GenerationService()
+    try:
+        analysis = await asyncio.to_thread(
+            svc.generate_text,
+            prompt,
+            _BEST_SHORTS_ANALYSIS_SYSTEM_PROMPT,
+        )
+    except Exception as e:
+        raise HTTPException(502, f"LLM error: {e}")
+
+    text = analysis.strip()
+    if not text:
+        raise HTTPException(502, "LLM returned empty analysis")
+    return BestShortsAnalyzeOut(analysis=text)

@@ -80,3 +80,16 @@ class BestShortsOut(BaseModel):
 
 class BestShortsTableOut(BaseModel):
     shorts: list[BestShortsOut]
+
+
+class BestShortsAnalyzeItem(BaseModel):
+    title: str
+    views: int
+
+
+class BestShortsAnalyzeRequest(BaseModel):
+    shorts: list[BestShortsAnalyzeItem]
+
+
+class BestShortsAnalyzeOut(BaseModel):
+    analysis: str

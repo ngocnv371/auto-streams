@@ -75,10 +75,13 @@
     </div>
     <div class="summary-row best-shorts-summary">
       <button class="btn-secondary" onclick="loadBestShorts()">Fetch data</button>
+      <button class="btn-secondary" id="btn-best-shorts-analyze" onclick="analyzeBestShorts()" title="Send the title & views to AI for analysis">Analyze</button>
+
       <div class="summary-chip"><div class="num" id="bs-total">—</div><div class="lbl">Rows</div></div>
       <div class="summary-chip"><div class="num" id="bs-matched" style="color:var(--success)">—</div><div class="lbl">Matched</div></div>
       <div class="summary-chip"><div class="num" id="bs-unmatched" style="color:var(--warning)">—</div><div class="lbl">Unmatched</div></div>
     </div>
+    <div id="best-shorts-analysis"></div>
     <div id="best-shorts-wrap"><div class="empty">Click <strong>Fetch data</strong> to fetch the latest data from YouTube Studio.</div></div>
   </div>
 
