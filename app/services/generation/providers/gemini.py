@@ -68,10 +68,11 @@ class GeminiTTSProvider(TTSProvider):
     def __init__(self, config: GeminiConfig) -> None:
         self._config = config
 
-    def synthesize(self, text: str, voice: str | None = None, speed: float = 1.0) -> bytes:
+    def synthesize(self, text: str, narrator: str | None = None, voice: str | None = None, speed: float = 1.0) -> bytes:
         url = f"{_BASE_URL}/models/{self._config.tts_model}:generateContent"
+        prompt = f"Narrate in a {narrator}. At {speed}x speed: {text}" if narrator else text
         body = {
-            "contents": [{"role": "user", "parts": [{"text": text}]}],
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {
                 "responseModalities": ["AUDIO"],
                 "speechConfig": {

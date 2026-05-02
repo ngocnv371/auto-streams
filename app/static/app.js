@@ -894,25 +894,6 @@ async function rerunAllImages(id, btn) {
   }
 }
 
-async function rerunAllAudio(id, btn) {
-  if (
-    !confirm(
-      "Regenerate ALL audio? This will send a new TTS request for the whole script.",
-    )
-  )
-    return;
-  btn.disabled = true;
-  btn.textContent = "…";
-  try {
-    await api("POST", `/projects/${id}/rerun/audio`);
-    toast("Audio regeneration queued", "success");
-    setTimeout(() => openDetail(id), 800);
-  } catch (e) {
-    toast(e.message, "error");
-    btn.disabled = false;
-    btn.textContent = "↺ All Audio";
-  }
-}
 async function setProjectStatus(id, status) {
   try {
     await api("PUT", `/projects/${id}/status`, { status });
@@ -1076,7 +1057,6 @@ function renderDetail(p) {
         <span class="detail-section-title">Scenes (${scenes.length})</span>
         <span class="section-title-actions">
           <button class="btn-sm rerun-asset" onclick="rerunAllImages('${p.id}',this)">↺ All Images</button>
-          <button class="btn-sm rerun-asset" onclick="rerunAllAudio('${p.id}',this)">↺ All Audio</button>
         </span>
       </div>
       <div class="scenes-list">${scenes

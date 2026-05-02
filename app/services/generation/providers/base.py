@@ -21,7 +21,7 @@ class TTSProvider(ABC):
     """Synthesises speech and returns raw WAV bytes."""
 
     @abstractmethod
-    def synthesize(self, text: str, voice: str | None = None, speed: float = 1.0) -> bytes: ...
+    def synthesize(self, text: str, narrator: str | None = None, voice: str | None = None, speed: float = 1.0) -> bytes: ...
 
 
 class MusicProvider(ABC):

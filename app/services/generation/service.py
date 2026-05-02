@@ -76,11 +76,12 @@ class GenerationService:
     def generate_speech(
         self,
         text: str,
+        narrator: str | None = None,
         voice: str | None = None,
         speed: float = 1.0,
     ) -> bytes:
         """Synthesise speech and return raw WAV bytes."""
-        return self._tts.synthesize(text, voice, speed)
+        return self._tts.synthesize(text, narrator, voice, speed)
 
     def generate_music(self, prompt: str, duration: int = 60) -> bytes:
         """Generate background music and return raw audio bytes."""

@@ -19,7 +19,6 @@ from app.services.pipeline import (
     run_render_stage,
     run_scene_image,
     run_all_scene_images,
-    run_all_scene_tts,
     rerun_music,
     run_upload_stage,
 )
@@ -211,17 +210,6 @@ async def rerun_all_images(project_id: str, session: Session, background_tasks: 
     return project.to_dict()
 
 
-@router.post("/{project_id}/rerun/audio", response_model=ProjectOut)
-async def rerun_all_audio(project_id: str, session: Session, background_tasks: BackgroundTasks):
-    """Re-generate TTS audio for the whole script without changing project status."""
-    project = await _get_or_404(session, project_id)
-    meta = project.get_metadata()
-    if not meta.get("scenes"):
-        raise HTTPException(400, "Project has no scenes yet — run the pipeline first")
-    background_tasks.add_task(_process_all_scene_tts, project_id)
-    return project.to_dict()
-
-
 @router.post("/{project_id}/open-folder", status_code=204, include_in_schema=False)
 async def open_project_folder(project_id: str, session: Session):
     """Open the project's temp folder in Windows Explorer."""
@@ -305,11 +293,6 @@ async def _process_render(project_id: str) -> None:
 
 async def _process_scene_image(project_id: str, scene_index: int) -> None:
     await run_scene_image(project_id, scene_index)
-
-
-async def _process_all_scene_tts(project_id: str) -> None:
-    await run_all_scene_tts(project_id)
-
 
 async def _process_rerun_music(project_id: str) -> None:
     await rerun_music(project_id)

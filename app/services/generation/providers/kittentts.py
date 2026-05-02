@@ -18,7 +18,7 @@ class KittenTTSProvider(TTSProvider):
         # KittenTTS downloads its model from HuggingFace on first instantiation.
         self._tts = KittenTTS(model_name=config.model)
 
-    def synthesize(self, text: str, voice: str | None = None, speed: float = 1.0) -> bytes:
+    def synthesize(self, text: str, narrator: str | None = None, voice: str | None = None, speed: float = 1.0) -> bytes:
         effective_voice = voice or self._config.voice
         audio_array = self._tts.generate(text, voice=effective_voice, speed=speed)
 
