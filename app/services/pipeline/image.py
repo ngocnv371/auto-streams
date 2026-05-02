@@ -41,11 +41,19 @@ async def run_image_stage(project_id: str) -> None:
         meta = project.get_metadata()
         scenes = meta.get("scenes", [])
         if not scenes:
-            log.warning(
+            _emit(
                 "image_stage: project %s has no scenes in metadata (status=%s), skipping",
                 project_id, project.status,
             )
             return
+        
+        if project.status != "music_ready":
+            _emit(
+                "image_stage: project %s has status %r, expected 'music_ready'",
+                project_id, project.status,
+            )
+            return
+
         visual_guide = meta.get("visual_guide", "")
         log.info("image_stage: %d scenes  provider=%r  visual_guide=%r",
                  len(scenes), get_config().providers.image, visual_guide[:80])
@@ -75,7 +83,7 @@ async def run_image_stage(project_id: str) -> None:
         async with factory() as session:
             p = await session.get(Project, project_id)
             if (p is None):
-                log.warning("scene_image: project %s disappeared during processing", project_id)
+                log.warning("image_stage: project %s disappeared during processing", project_id)
                 return
             m = p.get_metadata()
             m["scenes"] = updated_scenes

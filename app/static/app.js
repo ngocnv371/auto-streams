@@ -549,6 +549,10 @@ async function loadDashboard() {
       render_queue: "Render",
     };
     const qc = data.queue_counts;
+    const totalPending = Object.keys(labels).reduce(
+      (sum, key) => sum + Number(qc[key] ?? 0),
+      0,
+    );
     $("queue-grid").innerHTML = Object.entries(labels)
       .map(
         ([k, label]) => `
@@ -559,7 +563,14 @@ async function loadDashboard() {
         <button class="queue-run" id="qrun-${k}" ${(qc[k] ?? 0) === 0 ? "disabled" : ""} onclick="runQueue('${k}')">▶ Run</button>
       </div>`,
       )
-      .join("");
+      .join("") +
+      `
+      <div class="queue-card">
+        <div class="queue-name">Full Pipeline</div>
+        <div class="queue-count" id="qc-all">${totalPending}</div>
+        <div class="queue-label">projects ready</div>
+        <button class="queue-run" id="qrun-all" ${totalPending === 0 ? "disabled" : ""} onclick="runQueue('all')">▶ Run All</button>
+      </div>`;
   } catch (e) {
     toast("Dashboard error: " + e.message, "error");
   }
@@ -741,16 +752,17 @@ async function runQueue(queue) {
     const params = new URLSearchParams({ queue });
     if (currentTopicId && currentTopicId !== 'all') params.set("topic_id", currentTopicId);
     const res = await api("POST", `/dashboard/run-queue?${params}`);
-    toast(
-      `${res.queued} project${res.queued !== 1 ? "s" : ""} queued for ${queue.replace(/_/g, " ")}`,
-      "success",
-    );
+    const msg =
+      queue === "all"
+        ? `${res.queued} project${res.queued !== 1 ? "s" : ""} queued for full pipeline`
+        : `${res.queued} project${res.queued !== 1 ? "s" : ""} queued for ${queue.replace(/_/g, " ")}`;
+    toast(msg, "success");
     loadDashboard();
   } catch (e) {
     toast(e.message, "error");
     if (btn) {
       btn.disabled = false;
-      btn.textContent = "▶ Run";
+      btn.textContent = queue === "all" ? "▶ Run All" : "▶ Run";
     }
   }
 }

@@ -141,7 +141,7 @@ def _mix_music(video_path: str, music_path: str, out_path: str) -> None:
 
 
 async def run_render_stage(project_id: str) -> None:
-    """Render per-scene clips then assemble the final video. media_ready / clips_ready → done."""
+    """Render per-scene clips then assemble the final video. images_ready / media_ready / clips_ready → done."""
     from app.events import inc_active, dec_active, emit as _emit_event
     log.info("render_stage start project=%s", project_id)
     inc_active()
@@ -149,8 +149,8 @@ async def run_render_stage(project_id: str) -> None:
     try:
         project = await _load_project(project_id)
         if project is None or project.status not in ("images_ready", "media_ready", "clips_ready"):
-            log.warning(
-                "render_stage: project %s not in media_ready/clips_ready (status=%s)",
+            _emit(
+                "render_stage: project %s not in images_ready/media_ready/clips_ready (status=%s)",
                 project_id, project.status if project else "not found",
             )
             return
@@ -235,7 +235,7 @@ async def run_render_stage(project_id: str) -> None:
         async with factory() as session:
             p = await session.get(Project, project_id)
             if (p is None):
-                log.warning("scene_image: project %s disappeared during processing", project_id)
+                log.warning("render_stage: project %s disappeared during processing", project_id)
                 return
             m = p.get_metadata()
             m["scenes"] = updated_scenes
@@ -266,7 +266,7 @@ async def run_render_stage(project_id: str) -> None:
         async with factory() as session:
             p = await session.get(Project, project_id)
             if (p is None):
-                log.warning("scene_image: project %s disappeared during processing", project_id)
+                log.warning("render_stage: project %s disappeared during processing", project_id)
                 return
             m = p.get_metadata()
             m["video_path"] = final_path

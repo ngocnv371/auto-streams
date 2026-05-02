@@ -43,7 +43,7 @@ async def run_tts_stage(project_id: str) -> None:
     try:
         project = await _load_project(project_id)
         if project is None:
-            log.warning("tts_stage: project %s not found", project_id)
+            _emit("tts_stage: project %s not found", project_id)
             return
         log.info("tts_stage: project=%s", _format_project_slug(project))
         _emit("Generating TTS audio for %s", _format_project_slug(project), project_id=project_id, stage="tts")
@@ -51,8 +51,14 @@ async def run_tts_stage(project_id: str) -> None:
         meta = project.get_metadata()
         scenes = meta.get("scenes", [])
         if not scenes:
-            log.warning(
+            _emit(
                 "tts_stage: project %s has no scenes in metadata (status=%s), skipping",
+                project_id, project.status,
+            )
+            return
+        if project.status != "scenes_ready":
+            _emit(
+                "tts_stage: project %s has status %r, expected 'scenes_ready'",
                 project_id, project.status,
             )
             return
@@ -108,7 +114,7 @@ async def run_tts_stage(project_id: str) -> None:
         async with factory() as session:
             p = await session.get(Project, project_id)
             if (p is None):
-                log.warning("scene_image: project %s disappeared during processing", project_id)
+                _emit("tts_stage: project %s disappeared during processing", project_id)
                 return
             m = p.get_metadata()
             m["scenes"] = updated_scenes

@@ -41,6 +41,14 @@ _QUEUE_STATUS_MAP: dict[str, list[str]] = {
     "render_queue": ["images_ready"],
 }
 
+_FULL_PIPELINE_ELIGIBLE_STATUSES = [
+    "approved",
+    "scenes_ready",
+    "tts_ready",
+    "music_ready",
+    "images_ready",
+]
+
 _BEST_SHORTS_ANALYSIS_SYSTEM_PROMPT = (
     "You are a YouTube Shorts strategist. Analyze top shorts using only the "
     "provided title + views data and return concise, actionable guidance."
@@ -90,11 +98,24 @@ async def get_dashboard(
 async def run_queue(
     session: Session,
     background_tasks: BackgroundTasks,
-    queue: str = Query(..., description="Queue name, e.g. text_queue"),
+    queue: str = Query(..., description="Queue name (text_queue..render_queue) or 'all'"),
     topic_id: Optional[str] = Query(None),
 ) -> dict:
+    if queue == "all":
+        stmt = select(Project).where(Project.status.in_(_FULL_PIPELINE_ELIGIBLE_STATUSES))
+        if topic_id:
+            stmt = stmt.where(Project.topic_id == topic_id)
+        result = await session.execute(stmt)
+        projects = result.scalars().all()
+
+        project_ids = [project.id for project in projects]
+        background_tasks.add_task(_process_full_pipeline_batch, project_ids)
+
+        return {"queued": len(projects), "queue": queue}
+
     if queue not in _QUEUE_STATUS_MAP:
-        raise HTTPException(400, f"Unknown queue '{queue}'. Valid queues: {list(_QUEUE_STATUS_MAP)}")
+        valid = [*list(_QUEUE_STATUS_MAP), "all"]
+        raise HTTPException(400, f"Unknown queue '{queue}'. Valid queues: {valid}")
 
     statuses = _QUEUE_STATUS_MAP[queue]
     stmt = select(Project).where(Project.status.in_(statuses))
@@ -124,6 +145,20 @@ async def _process_pipeline_stub(project_id: str, queue: str) -> None:
     handler = _QUEUE_HANDLERS.get(queue)
     if handler:
         await handler(project_id)
+
+
+async def _process_full_pipeline_batch(project_ids: list[str]) -> None:
+    # Run handlers in global stage order across all projects.
+    # Each stage handler no-ops when the current status is not eligible.
+    for handler in (
+        run_text_stage,
+        run_tts_stage,
+        run_music_stage,
+        run_image_stage,
+        run_render_stage,
+    ):
+        for project_id in project_ids:
+            await handler(project_id)
 
 
 @router.get("/best-shorts", response_model=BestShortsTableOut)

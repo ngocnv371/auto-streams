@@ -40,8 +40,15 @@ async def run_music_stage(project_id: str) -> None:
 
         meta = project.get_metadata()
         if not meta.get("scenes"):
-            log.warning(
+            _emit(
                 "music_stage: project %s has no scenes in metadata (status=%s), skipping",
+                project_id, project.status,
+            )
+            return
+        
+        if project.status != "tts_ready":
+            _emit(
+                "music_stage: project %s has status %r, expected 'tts_ready'",
                 project_id, project.status,
             )
             return
@@ -65,7 +72,7 @@ async def run_music_stage(project_id: str) -> None:
         async with factory() as session:
             p = await session.get(Project, project_id)
             if (p is None):
-                log.warning("scene_image: project %s disappeared during processing", project_id)
+                _emit("music_stage: project %s disappeared during processing", project_id)
                 return
             m = p.get_metadata()
             m["music_path"] = music_path
@@ -130,7 +137,7 @@ async def rerun_music(project_id: str) -> None:
         async with factory() as session:
             p = await session.get(Project, project_id)
             if (p is None):
-                log.warning("scene_image: project %s disappeared during processing", project_id)
+                _emit("music_stage: project %s disappeared during processing", project_id)
                 return
             m = p.get_metadata()
             m["music_path"] = music_path
