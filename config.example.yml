@@ -54,3 +54,8 @@ youtube:
   # Visibility for uploaded videos: public | unlisted | private
   visibility: unlisted
   headless: true   # Whether to run the browser in headless mode (no GUI). Set to false for debugging.
+
+scheduler:
+  enabled: false
+  # Local server time. Standard 5-field cron: minute hour day month weekday.
+  upload_rendered_cron: "0 8,10,13 * * *"

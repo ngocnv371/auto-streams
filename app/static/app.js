@@ -166,6 +166,18 @@ function escHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+function fmtScheduleDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleString([], {
+    weekday: "short",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 // ═══════════════════════════════════════════════════════════
 //  State
 // ═══════════════════════════════════════════════════════════
@@ -528,10 +540,38 @@ async function loadDashboard() {
     if (currentTopicId !== "all") params.set("topic_id", currentTopicId);
     const data = await api("GET", `/dashboard?${params}`);
     const sc = data.status_counts;
+    const sched = data.scheduler || {};
     $("s-total").textContent = data.total;
     $("s-rendered").textContent = sc.rendered || 0;
     $("s-failed").textContent = sc.failed || 0;
     $("s-idea").textContent = sc.idea || 0;
+
+    const nextRuns = Array.isArray(sched.next_runs) ? sched.next_runs : [];
+    const stateClass = sched.enabled ? "is-on" : "is-off";
+    const stateText = sched.enabled ? "Enabled" : "Disabled";
+    const runMarkup = nextRuns.length
+      ? nextRuns
+          .map((ts) => `<span class="schedule-pill">${escHtml(fmtScheduleDate(ts))}</span>`)
+          .join("")
+      : '<span class="text-muted">No upcoming times</span>';
+    const parseErrorMarkup = sched.parse_error
+      ? `<div class="schedule-error">${escHtml(sched.parse_error)}</div>`
+      : "";
+
+    $("schedule-card").innerHTML = `
+      <div class="schedule-header">
+        <span class="schedule-state ${stateClass}">${stateText}</span>
+      </div>
+      <div class="schedule-row">
+        <span class="schedule-label">Cron</span>
+        <span class="schedule-value">${escHtml(sched.upload_rendered_cron || "—")}</span>
+      </div>
+      <div class="schedule-row">
+        <span class="schedule-label">Next runs</span>
+        <span class="schedule-runs">${runMarkup}</span>
+      </div>
+      ${parseErrorMarkup}
+    `;
 
     $("pipeline-steps").innerHTML = PIPELINE_STATUSES.map(
       (s) => `

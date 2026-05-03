@@ -66,6 +66,14 @@ class DashboardOut(BaseModel):
     status_counts: dict[str, int]
     queue_counts: dict[str, int]
     total: int
+    scheduler: "DashboardSchedulerOut"
+
+
+class DashboardSchedulerOut(BaseModel):
+    enabled: bool
+    upload_rendered_cron: str
+    next_runs: list[str]
+    parse_error: str | None = None
 
 
 class BestShortsOut(BaseModel):

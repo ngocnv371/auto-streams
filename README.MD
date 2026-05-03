@@ -189,3 +189,15 @@ A browser-based dashboard served by the FastAPI backend.
 ## Configuration
 
 A local `config.yml` drives all runtime settings
+
+### Scheduled uploads
+
+You can enable an in-process upload scheduler in `config.yml`.
+
+```yml
+scheduler:
+  enabled: true
+  upload_rendered_cron: "0 9 * * *"
+```
+
+When the cron fires, the app picks one random project in `rendered` status and runs the existing upload stage for it. The cron uses the server's local time and standard 5-field cron format: `minute hour day month weekday`.

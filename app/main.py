@@ -14,6 +14,7 @@ from app.database import init_db
 from app.events import subscribe, unsubscribe
 from app.routers import dashboard, projects
 from app.routers import topics, ideas
+from app.services.scheduler import UploadScheduler
 
 
 logging.basicConfig(
@@ -23,9 +24,12 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    load_config()
+    cfg = load_config()
     await init_db()
+    scheduler = UploadScheduler(cfg.scheduler)
+    await scheduler.start()
     yield
+    await scheduler.stop()
 
 
 app = FastAPI(title="auto-streams", lifespan=lifespan)

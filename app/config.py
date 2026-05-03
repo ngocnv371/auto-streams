@@ -87,6 +87,12 @@ class YouTubeConfig:
 
 
 @dataclass
+class SchedulerConfig:
+    enabled: bool = False
+    upload_rendered_cron: str = "0 9 * * *"
+
+
+@dataclass
 class AppConfig:
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     temp_dir: str = "./temp"
@@ -98,6 +104,7 @@ class AppConfig:
     video: VideoConfig = field(default_factory=VideoConfig)
     server: ServerConfig = field(default_factory=ServerConfig)
     youtube: YouTubeConfig = field(default_factory=YouTubeConfig)
+    scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
 
 
 def _build_config(data: dict) -> AppConfig:
@@ -150,6 +157,9 @@ def _build_config(data: dict) -> AppConfig:
 
     if "youtube" in data:
         cfg.youtube = YouTubeConfig(**data["youtube"])
+
+    if "scheduler" in data:
+        cfg.scheduler = SchedulerConfig(**data["scheduler"])
 
     return cfg
 

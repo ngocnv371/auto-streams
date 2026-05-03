@@ -10,9 +10,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
+from app.config import get_config
 from app.models import Project, PROJECT_STATUSES
 from app.schemas import (
     DashboardOut,
+    DashboardSchedulerOut,
     BestShortsTableOut,
     BestShortsOut,
     BestShortsAnalyzeRequest,
@@ -27,6 +29,7 @@ from app.services.pipeline import (
     run_image_stage,
     run_render_stage,
 )
+from app.services.scheduler import get_next_run_times
 
 router = APIRouter()
 
@@ -87,10 +90,25 @@ async def get_dashboard(
         for name, statuses in _QUEUE_STATUS_MAP.items()
     }
 
+    cfg = get_config()
+    scheduler_cfg = cfg.scheduler
+    parse_error: str | None = None
+    next_runs: list[str] = []
+    try:
+        next_runs = [dt.isoformat() for dt in get_next_run_times(scheduler_cfg.upload_rendered_cron, 3)]
+    except ValueError as exc:
+        parse_error = str(exc)
+
     return DashboardOut(
         status_counts=status_counts,
         queue_counts=queue_counts,
         total=total,
+        scheduler=DashboardSchedulerOut(
+            enabled=scheduler_cfg.enabled,
+            upload_rendered_cron=scheduler_cfg.upload_rendered_cron,
+            next_runs=next_runs,
+            parse_error=parse_error,
+        ),
     )
 
 
