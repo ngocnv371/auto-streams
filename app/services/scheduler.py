@@ -65,24 +65,21 @@ class UploadScheduler:
         while not self._stop_event.is_set():
             now = datetime.now()
             
-            if self._cron is not None:
-                next_run = self._cron.get_next(datetime)
-                log.info("UploadScheduler loop tick at %s", now.isoformat())
-                log.info("Next scheduled upload at %s", next_run.isoformat())
-                # Check if current minute matches the schedule
-                if now < next_run and now + timedelta(minutes=1) > next_run:
-                    if self._last_triggered_minute != next_run:
-                        self._last_triggered_minute = next_run
-                        await self._trigger_upload()
-                    # Reset the cron iterator to ensure proper future calculations
-                    self._cron = croniter(self._config.upload_rendered_cron, now)
+            crox = croniter(self._config.upload_rendered_cron, now)
+            next_run = crox.get_next(datetime)
+            log.info("upload scheduler next run at %s", next_run.isoformat())
 
-            next_minute = now + timedelta(minutes=1)
-            sleep_for = max((next_minute - datetime.now()).total_seconds(), 1.0)
+            delay = (next_run - now).total_seconds()
+            
+            if delay > 0:
+                log.info("upload scheduler sleeping for %.2f seconds until next run", delay)
+                await asyncio.sleep(delay)
+
             try:
-                await asyncio.wait_for(self._stop_event.wait(), timeout=sleep_for)
-            except asyncio.TimeoutError:
-                continue
+                log.info("upload scheduler woke up for scheduled run at %s", datetime.now().isoformat())
+                await self._trigger_upload()
+            except Exception as e:
+                log.error("Error in upload scheduler loop: %s", e, exc_info=True)
 
     async def _trigger_upload(self) -> None:
         log.info("upload scheduler triggered at %s", datetime.now().isoformat())
