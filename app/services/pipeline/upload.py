@@ -122,6 +122,19 @@ def _do_upload(video_path: str, title: str, description: str, visibility: str) -
         radio_buttons[vis_index].click()
         time.sleep(0.5)
 
+        # Wait for any element `span.ytcp-video-upload-progress` to contain text 'Checks complete. No issues found' to be visible
+        log.info("upload: waiting for checks to complete")
+        checks_complete = False
+        for _ in range(30):
+            time.sleep(2)
+            progress_elements = driver.find_elements(By.CSS_SELECTOR, "span.ytcp-video-upload-progress")
+            for el in progress_elements:
+                if "Checks complete. No issues found" in el.text:
+                    checks_complete = True
+                    break
+            if checks_complete:
+                break
+
         # ── Done ─────────────────────────────────────────────────────
         log.info("upload: clicking done")
         done_button = driver.find_element(By.ID, _DONE_BUTTON_ID)
