@@ -432,6 +432,8 @@ h2 { font-size: .85rem; font-weight: 600; margin-bottom: .85rem; color: var(--mu
 .search-input { flex: 1; min-width: 180px; }
 .search-input:focus, .select-filter:focus { border-color: var(--primary); }
 .select-filter option { background: var(--surface); }
+.bulk-action-select { min-width: 170px; }
+.bulk-selected-count { color: var(--muted); font-size: .78rem; white-space: nowrap; }
 
 table { width: 100%; border-collapse: collapse; font-size: .875rem; }
 thead th {
@@ -444,8 +446,22 @@ thead th {
   border-bottom: 1px solid var(--border);
   font-weight: 600;
 }
-tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; cursor: pointer; }
-tbody tr:hover { background: rgba(255,255,255,.03); }
+th.th-check,
+td.td-check {
+  width: 42px;
+  text-align: center;
+  padding-left: .5rem;
+  padding-right: .5rem;
+}
+.row-check,
+.header-check {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+tbody tr { border-bottom: 1px solid var(--border); transition: background .12s; cursor: pointer; }
+tbody tr:hover { background: rgba(59,130,246,.12); }
+tbody tr.is-selected { background: rgba(59,130,246,.18); }
 tbody td { padding: .65rem .75rem; vertical-align: middle; }
 .td-title { font-weight: 500; max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .td-date { color: var(--muted); font-size: .8rem; white-space: nowrap; }

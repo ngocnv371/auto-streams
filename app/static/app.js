@@ -650,9 +650,134 @@ async function loadBestShorts() {
 //  Projects
 // ═══════════════════════════════════════════════════════════
 let _debounceT = null;
+let _projectRows = [];
+let _selectedProjectIds = new Set();
+
+const BULK_STATUS_OPTIONS = [
+  "idea",
+  "approved",
+  "content_ready",
+  "scenes_ready",
+  "tts_ready",
+  "music_ready",
+  "images_ready",
+  "media_ready",
+  "clips_ready",
+  "rendered",
+  "uploaded",
+  "failed",
+];
+
 function debounceLoadProjects() {
   clearTimeout(_debounceT);
   _debounceT = setTimeout(loadProjects, 280);
+}
+
+function updateProjectsSelectionUi() {
+  const selectedInView = _projectRows.filter((p) =>
+    _selectedProjectIds.has(p.id),
+  ).length;
+  const totalInView = _projectRows.length;
+  const countEl = $("bulk-selected-count");
+  const applyBtn = $("bulk-apply");
+  const actionSel = $("bulk-action");
+  const headerCheck = $("projects-check-all");
+
+  if (countEl) countEl.textContent = `${selectedInView} selected`;
+  if (applyBtn)
+    applyBtn.disabled = selectedInView === 0 || !(actionSel && actionSel.value);
+  if (headerCheck) {
+    headerCheck.checked = totalInView > 0 && selectedInView === totalInView;
+    headerCheck.indeterminate = selectedInView > 0 && selectedInView < totalInView;
+  }
+}
+
+function onBulkActionChanged() {
+  updateProjectsSelectionUi();
+}
+
+function toggleProjectSelection(e, id) {
+  e.stopPropagation();
+  if (e.target.checked) _selectedProjectIds.add(id);
+  else _selectedProjectIds.delete(id);
+  updateProjectsSelectionUi();
+}
+
+function toggleAllProjects(e) {
+  const checked = e.target.checked;
+  for (const p of _projectRows) {
+    if (checked) _selectedProjectIds.add(p.id);
+    else _selectedProjectIds.delete(p.id);
+  }
+  document.querySelectorAll("#projects-table-wrap tbody tr").forEach((row) => {
+    row.classList.toggle("is-selected", checked);
+  });
+  document
+    .querySelectorAll("#projects-table-wrap .row-check")
+    .forEach((cb) => (cb.checked = checked));
+  updateProjectsSelectionUi();
+}
+
+async function applyBulkAction() {
+  const action = $("bulk-action")?.value;
+  const ids = _projectRows
+    .map((p) => p.id)
+    .filter((id) => _selectedProjectIds.has(id));
+
+  if (!action) {
+    toast("Select a bulk action first", "error");
+    return;
+  }
+  if (!ids.length) {
+    toast("Select at least one project", "error");
+    return;
+  }
+
+  if (action === "delete") {
+    const ok = confirm(
+      `Delete ${ids.length} selected project${ids.length !== 1 ? "s" : ""}? This cannot be undone.`,
+    );
+    if (!ok) return;
+    const results = await Promise.allSettled(
+      ids.map((id) => api("DELETE", `/projects/${id}`)),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    const success = results.length - failed;
+    if (failed) {
+      toast(`Deleted ${success}. Failed ${failed}.`, "error");
+    } else {
+      toast(`Deleted ${success} project${success !== 1 ? "s" : ""}`, "success");
+    }
+  } else if (action === "status") {
+    const current = $("status-filter")?.value || "";
+    const statusPrompt = prompt(
+      `Set status for ${ids.length} selected project${ids.length !== 1 ? "s" : ""}.\n\nChoose one:\n${BULK_STATUS_OPTIONS.join(", ")}`,
+      current && BULK_STATUS_OPTIONS.includes(current) ? current : BULK_STATUS_OPTIONS[0],
+    );
+    if (statusPrompt == null) return;
+    const nextStatus = statusPrompt.trim();
+    if (!BULK_STATUS_OPTIONS.includes(nextStatus)) {
+      toast("Invalid status", "error");
+      return;
+    }
+    const results = await Promise.allSettled(
+      ids.map((id) => api("PUT", `/projects/${id}/status`, { status: nextStatus })),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    const success = results.length - failed;
+    if (failed) {
+      toast(`Updated ${success}. Failed ${failed}.`, "error");
+    } else {
+      toast(
+        `Updated ${success} project${success !== 1 ? "s" : ""} to ${nextStatus}`,
+        "success",
+      );
+    }
+  }
+
+  // Keep selection only for rows still visible after refresh.
+  await loadProjects();
+  loadDashboard();
 }
 
 async function loadProjects() {
@@ -684,18 +809,42 @@ async function loadProjects() {
     const projects = tagFilter
       ? allProjects.filter((p) => p.tags.includes(tagFilter))
       : allProjects;
+    _projectRows = projects;
+    const visibleIds = new Set(projects.map((p) => p.id));
+    _selectedProjectIds = new Set(
+      [..._selectedProjectIds].filter((id) => visibleIds.has(id)),
+    );
     if (!projects.length) {
       wrap.innerHTML =
         '<div class="empty">No projects yet — Generate Ideas to get started.</div>';
+      updateProjectsSelectionUi();
       return;
     }
     wrap.innerHTML = `
       <table>
-        <thead><tr><th>Title</th><th>Status</th><th>Tags</th><th>Created</th><th>Actions</th></tr></thead>
+        <thead>
+          <tr>
+            <th class="th-check"><input id="projects-check-all" class="header-check" type="checkbox" onchange="toggleAllProjects(event)" aria-label="Select all projects" /></th>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Tags</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
         <tbody>${projects
           .map(
             (p) => `
-          <tr onclick="openDetail('${p.id}')">
+          <tr class="${_selectedProjectIds.has(p.id) ? "is-selected" : ""}" onclick="openDetail('${p.id}')">
+            <td class="td-check" onclick="event.stopPropagation()">
+              <input
+                class="row-check"
+                type="checkbox"
+                aria-label="Select project ${escHtml(p.title)}"
+                ${_selectedProjectIds.has(p.id) ? "checked" : ""}
+                onchange="toggleProjectSelection(event,'${p.id}')"
+              />
+            </td>
             <td class="td-title">${escHtml(p.title)}</td>
             <td>${badge(p.status)}</td>
             <td class="td-tags">${p.tags.map((t) => `<span class="tag">${escHtml(t)}</span>`).join("") || '<span class="text-muted">—</span>'}</td>
@@ -712,7 +861,11 @@ async function loadProjects() {
           .join("")}
         </tbody>
       </table>`;
+    updateProjectsSelectionUi();
   } catch (e) {
+    _projectRows = [];
+    _selectedProjectIds.clear();
+    updateProjectsSelectionUi();
     wrap.innerHTML = `<div class="empty">Error: ${escHtml(e.message)}</div>`;
   }
 }

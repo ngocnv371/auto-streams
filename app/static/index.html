@@ -105,6 +105,13 @@
         <option value="uploaded">uploaded</option>
         <option value="failed">failed</option>
       </select>
+      <select class="select-filter bulk-action-select" id="bulk-action" onchange="onBulkActionChanged()">
+        <option value="">Bulk action…</option>
+        <option value="delete">Bulk delete</option>
+        <option value="status">Bulk status update</option>
+      </select>
+      <button class="btn-sm" id="bulk-apply" onclick="applyBulkAction()" disabled>Apply</button>
+      <span class="bulk-selected-count" id="bulk-selected-count">0 selected</span>
     </div>
     <div id="projects-table-wrap"><div class="empty">Loading…</div></div>
   </div>
