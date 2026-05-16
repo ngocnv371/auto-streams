@@ -1232,6 +1232,13 @@ function renderDetail(p) {
         .join("")}
       </div></div>`;
   }
+  // Show error if status is failed and error exists in metadata
+  if (p.status === "failed" && meta.error) {
+    body += `<div class="detail-section">
+      <div class="detail-section-title" style="color:var(--danger)">Error</div>
+      <div class="meta-val pre" style="color:var(--danger);white-space:pre-wrap;">${escHtml(meta.error)}</div>
+    </div>`;
+  }
   if (p.tags.length) {
     body += `<div class="detail-section">
       <div class="detail-section-title">Tags</div>
