@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from typing import Annotated
 from typing import Optional
 
@@ -9,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_session
+from app.database import get_session, _get_session_factory
 from app.config import get_config
 from app.models import Project, PROJECT_STATUSES
 from app.schemas import (
@@ -32,6 +33,7 @@ from app.services.pipeline import (
 from app.services.scheduler import get_next_run_times
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 Session = Annotated[AsyncSession, Depends(get_session)]
 
@@ -125,11 +127,22 @@ async def run_queue(
             stmt = stmt.where(Project.topic_id == topic_id)
         result = await session.execute(stmt)
         projects = result.scalars().all()
+        found_projects = "\n".join(
+            f"{project.id[:8]} | {project.status} | {project.title or '(untitled)'}"
+            for project in projects
+        )
+        logger.info(
+            "run_queue queue=%s topic_id=%s queued=%d projects:\n%s",
+            queue,
+            topic_id,
+            len(projects),
+            found_projects,
+        )
 
         project_ids = [project.id for project in projects]
         background_tasks.add_task(_process_full_pipeline_batch, project_ids)
 
-        return {"queued": len(projects), "queue": queue}
+        return {"queued": len(projects), "queue": queue, "found_projects": found_projects}
 
     if queue not in _QUEUE_STATUS_MAP:
         valid = [*list(_QUEUE_STATUS_MAP), "all"]
@@ -141,11 +154,21 @@ async def run_queue(
         stmt = stmt.where(Project.topic_id == topic_id)
     result = await session.execute(stmt)
     projects = result.scalars().all()
+    found_projects = "\n".join(
+        f"{project.id[:8]} | {project.status} | {project.title or '(untitled)'}"
+        for project in projects
+    )
+    logger.info(
+        "run_queue queue=%s topic_id=%s queued=%d projects:\n%s",
+        queue,
+        topic_id,
+        len(projects),
+        found_projects,
+    )
+    
+    background_tasks.add_task(_process_queue_batch, statuses, queue, topic_id)
 
-    for project in projects:
-        background_tasks.add_task(_process_pipeline_stub, project.id, queue)
-
-    return {"queued": len(projects), "queue": queue}
+    return {"queued": len(projects), "queue": queue, "found_projects": found_projects}
 
 
 # ------------------------------------------------------------------ helpers
@@ -158,6 +181,18 @@ _QUEUE_HANDLERS = {
     "render_queue": run_render_stage,
 }
 
+_MAX_FAILURES = 3
+
+
+async def _check_project_status(project_id: str) -> str | None:
+    """Fetch the current status of a project. Returns None if project not found."""
+    async with _get_session_factory()() as session:
+        result = await session.execute(
+            select(Project).where(Project.id == project_id)
+        )
+        project = result.scalars().first()
+        return project.status if project else None
+
 
 async def _process_pipeline_stub(project_id: str, queue: str) -> None:
     handler = _QUEUE_HANDLERS.get(queue)
@@ -165,9 +200,41 @@ async def _process_pipeline_stub(project_id: str, queue: str) -> None:
         await handler(project_id)
 
 
+async def _process_queue_batch(statuses: list[str], queue: str, topic_id: Optional[str] = None) -> None:
+    """Process all projects in a queue with failure tracking.
+    Stops after 3 projects fail to prevent queue contamination."""
+    handler = _QUEUE_HANDLERS.get(queue)
+    if not handler:
+        return
+    
+    # Fetch projects to process
+    async with _get_session_factory()() as session:
+        stmt = select(Project).where(Project.status.in_(statuses))
+        if topic_id:
+            stmt = stmt.where(Project.topic_id == topic_id)
+        result = await session.execute(stmt)
+        projects = result.scalars().all()
+        project_ids = [p.id for p in projects]
+    
+    failure_count = 0
+    for project_id in project_ids:
+        await handler(project_id)
+        
+        # Check if project failed after processing
+        status = await _check_project_status(project_id)
+        if status == "failed":
+            failure_count += 1
+            if failure_count >= _MAX_FAILURES:
+                # Stop processing queue to avoid contamination
+                return
+
+
 async def _process_full_pipeline_batch(project_ids: list[str]) -> None:
-    # Run handlers in global stage order across all projects.
-    # Each stage handler no-ops when the current status is not eligible.
+    """Run handlers in global stage order across all projects.
+    Each stage handler no-ops when the current status is not eligible.
+    Stops after 3 projects fail to prevent queue contamination."""
+    failure_count = 0
+    
     for handler in (
         run_text_stage,
         run_tts_stage,
@@ -177,6 +244,14 @@ async def _process_full_pipeline_batch(project_ids: list[str]) -> None:
     ):
         for project_id in project_ids:
             await handler(project_id)
+            
+            # Check if project failed after processing
+            status = await _check_project_status(project_id)
+            if status == "failed":
+                failure_count += 1
+                if failure_count >= _MAX_FAILURES:
+                    # Stop processing entire batch
+                    return
 
 
 @router.get("/best-shorts", response_model=BestShortsTableOut)

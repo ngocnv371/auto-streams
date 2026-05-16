@@ -166,6 +166,15 @@ function escHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+function sanitizeClassNames(classNames) {
+  if (!classNames) return "";
+  return String(classNames)
+    .trim()
+    .split(/\s+/)
+    .filter((name) => /^[a-zA-Z0-9_-]+$/.test(name))
+    .join(" ");
+}
+
 function fmtScheduleDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -1192,6 +1201,7 @@ function renderDetail(p) {
   const meta = p.metadata || {};
   const scenes = meta.scenes || [];
   const metaFields = [
+    ["Error", meta.error, "meta-item-error"],
     ["Summary", meta.summary],
     ["Transcript", meta.transcript],
     ["Narrator", meta.narrator],
@@ -1223,21 +1233,17 @@ function renderDetail(p) {
       <div class="detail-section-title">Metadata</div>
       <div class="meta-grid">${metaFields
         .map(
-          ([k, v]) => `
-        <div class="meta-item">
+          ([k, v, classNames]) => `
+        <div class="meta-item${(() => {
+            const safeClassNames = sanitizeClassNames(classNames);
+            return safeClassNames ? ` ${safeClassNames}` : "";
+          })()}">
           <div class="meta-key">${escHtml(k)}</div>
           <div class="meta-val pre">${escHtml(String(v))}</div>
         </div>`,
         )
         .join("")}
       </div></div>`;
-  }
-  // Show error if status is failed and error exists in metadata
-  if (p.status === "failed" && meta.error) {
-    body += `<div class="detail-section">
-      <div class="detail-section-title" style="color:var(--danger)">Error</div>
-      <div class="meta-val pre" style="color:var(--danger);white-space:pre-wrap;">${escHtml(meta.error)}</div>
-    </div>`;
   }
   if (p.tags.length) {
     body += `<div class="detail-section">

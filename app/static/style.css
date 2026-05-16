@@ -610,6 +610,14 @@ tbody td { padding: .65rem .75rem; vertical-align: middle; }
 .section-title-actions { display: flex; gap: .35rem; }
 .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
 .meta-item { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: .5rem .75rem; }
+.meta-item-error {
+  border-color: rgba(239, 68, 68, .55);
+  background: rgba(239, 68, 68, .08);
+}
+.meta-item-error .meta-key,
+.meta-item-error .meta-val {
+  color: #fca5a5;
+}
 .meta-key { font-size: .7rem; color: var(--muted); margin-bottom: .15rem; }
 .meta-val { font-size: .85rem; word-break: break-all; }
 .meta-val.pre { font-family: monospace; font-size: .75rem; white-space: pre-wrap; }
