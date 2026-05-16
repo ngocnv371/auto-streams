@@ -10,10 +10,11 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import load_only
 
 from app.database import get_session
 from app.models import Project, Topic
-from app.schemas import ProjectCreate, ProjectOut, ProjectStatusUpdate, ProjectUpdate
+from app.schemas import ProjectCreate, ProjectListOut, ProjectOut, ProjectStatusUpdate, ProjectUpdate
 from app.services.pipeline import (
     run_full_pipeline,
     run_render_stage,
@@ -28,7 +29,7 @@ router = APIRouter()
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
-@router.get("", response_model=list[ProjectOut])
+@router.get("", response_model=list[ProjectListOut])
 async def list_projects(
     session: Session,
     topic_id: Optional[str] = Query(None),
@@ -37,7 +38,21 @@ async def list_projects(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
-    stmt = select(Project).order_by(Project.created_at.desc())
+    stmt = (
+        select(Project)
+        .options(
+            load_only(
+                Project.id,
+                Project.topic_id,
+                Project.title,
+                Project.status,
+                Project.tags_json,
+                Project.created_at,
+                Project.updated_at,
+            )
+        )
+        .order_by(Project.created_at.desc())
+    )
     if topic_id:
         stmt = stmt.where(Project.topic_id == topic_id)
     if status:
@@ -47,7 +62,18 @@ async def list_projects(
     stmt = stmt.offset(offset).limit(limit)
     result = await session.execute(stmt)
     projects = result.scalars().all()
-    return [p.to_dict() for p in projects]
+    return [
+        {
+            "id": p.id,
+            "topic_id": p.topic_id,
+            "title": p.title,
+            "status": p.status,
+            "tags": p.get_tags(),
+            "created_at": p.created_at.isoformat() if p.created_at else None,
+            "updated_at": p.updated_at.isoformat() if p.updated_at else None,
+        }
+        for p in projects
+    ]
 
 
 @router.post("", response_model=ProjectOut, status_code=201)
@@ -96,6 +122,14 @@ async def update_project(project_id: str, body: ProjectUpdate, session: Session)
 async def set_status(project_id: str, body: ProjectStatusUpdate, session: Session):
     project = await _get_or_404(session, project_id)
     project.status = body.status
+    # Clear 'error' in metadata if present
+    meta = project.get_metadata() if hasattr(project, 'get_metadata') else None
+    if meta and 'error' in meta:
+        meta['error'] = None
+        if hasattr(project, 'set_metadata'):
+            project.set_metadata(meta)
+        else:
+            project.meta_json = __import__('json').dumps(meta)
     project.touch()
     await session.commit()
     await session.refresh(project)

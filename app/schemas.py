@@ -57,6 +57,18 @@ class ProjectOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ProjectListOut(BaseModel):
+    id: str
+    topic_id: str
+    title: str
+    status: str
+    tags: list[str]
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
 class GenerateIdeasRequest(BaseModel):
     topic_id: str
     count: int = 5
